@@ -17,13 +17,14 @@ export default function Game() {
   const {
     phase, dayNumber, players, messages, myId, myRole, myTeam,
     seerResults, winner, phaseEndTime, votes, error, clearError,
-    hunterPlayerId,
+    hunterPlayerId, reset,
   } = useGameStore();
 
   const [nightTarget, setNightTarget] = useState<string | undefined>();
   const [activePanel, setActivePanel] = useState<Panel>('chat');
   const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(10);
 
   const me = myId ? players[myId] : undefined;
   const isAlive = me?.isAlive ?? false;
@@ -35,6 +36,24 @@ export default function Game() {
   useEffect(() => {
     if (phase === 'lobby') navigate('/lobby');
   }, [phase, navigate]);
+
+  useEffect(() => {
+    if (phase !== 'game-over' || !winner) return;
+    setCountdown(10);
+    const interval = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          reset();
+          socket.disconnect();
+          navigate('/');
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase, winner, navigate, reset]);
 
   useEffect(() => {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
@@ -72,13 +91,43 @@ export default function Game() {
       <SkyScene phase={phase} />
       <PhaseBar phase={phase} dayNumber={dayNumber} phaseEndTime={phaseEndTime} />
 
-      {/* Game over banner */}
+      {/* Game over overlay */}
       {phase === 'game-over' && winner && (
-        <div className={`text-center py-3 font-bold text-lg border-b border-white/10
-          ${winner === 'vampire' ? 'bg-blood-900/60 text-blood-300' : 'bg-green-900/40 text-green-300'}`}>
-          {winner === 'vampire' ? '🧛 Vampirler Kazandı!' : '🏡 Köy Kurtuldu!'}
-          {' — '}
-          <button className="underline text-sm" onClick={() => navigate('/')}>Ana Menüye Dön</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm">
+          <div className="text-center px-8 py-10 max-w-sm w-full mx-4 rounded-3xl bg-night-900 border border-white/10 shadow-2xl">
+            <div className="text-7xl mb-3">{winner === 'vampire' ? '🧛' : '🏡'}</div>
+            <h2 className="text-2xl font-bold text-white mb-1">
+              {winner === 'vampire' ? 'Vampirler Kazandı!' : 'Köy Kurtuldu!'}
+            </h2>
+
+            <div className={`mt-6 py-5 px-4 rounded-2xl ${myTeam === winner
+              ? 'bg-green-900/50 border border-green-700'
+              : 'bg-blood-900/50 border border-blood-800'}`}>
+              {myTeam === winner ? (
+                <>
+                  <div className="text-5xl mb-2">🎉</div>
+                  <p className="text-xl font-bold text-green-300">Kazandınız!</p>
+                  <p className="text-green-500 text-sm mt-1">Tebrikler!</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-5xl mb-2">😢</div>
+                  <p className="text-xl font-bold text-blood-300">Kaybettiniz!</p>
+                  <p className="text-gray-500 text-sm mt-1">Böyle oynarsan kaybedersin tabi kolsuz</p>
+                </>
+              )}
+            </div>
+
+            <p className="text-gray-600 text-sm mt-6">
+              {countdown} saniye sonra ana menüye dönülüyor...
+            </p>
+            <button
+              className="mt-3 text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
+              onClick={() => { reset(); socket.disconnect(); navigate('/'); }}
+            >
+              Hemen çık
+            </button>
+          </div>
         </div>
       )}
 
