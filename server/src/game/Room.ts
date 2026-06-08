@@ -397,6 +397,43 @@ export class Room {
     this.addSystemMessage(`🎮 Oyun bitti! ${reason}`);
     this.broadcast('game:over', winner, reason);
     this.broadcast('game:state', this.getPublicState());
+    this.schedulePhaseEnd(11000, () => this.resetToLobby());
+  }
+
+  resetToLobby(): void {
+    this.clearPhaseTimer();
+    this.phase = 'lobby';
+    this.dayNumber = 0;
+    this.winner = undefined;
+    this.eliminatedPlayerId = undefined;
+    this.hunterPending = undefined;
+    this.nightActions = {};
+    this.seerResults = {};
+    this.lastDoctorTarget = null;
+    this.phaseEndTime = 0;
+    this.messages = [];
+
+    Object.values(this.players).forEach(p => {
+      p.isAlive = true;
+      p.role = undefined;
+      p.team = undefined;
+      p.vote = undefined;
+      p.nightActionDone = false;
+    });
+
+    const msg: Message = {
+      id: uuidv4(),
+      senderId: 'system',
+      senderName: 'Sistem',
+      content: '🔄 Yeni oyun hazır! Oda sahibi ayarları yapıp başlatabilir.',
+      channel: 'system',
+      timestamp: Date.now(),
+    };
+    this.messages.push(msg);
+
+    Object.keys(this.players).forEach(pid => {
+      this.sendTo(pid, 'room:joined', this.getPersonalState(pid), this.settings);
+    });
   }
 
   sendMessage(playerId: string, content: string, channel: ChatChannel): string | null {

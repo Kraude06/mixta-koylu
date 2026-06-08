@@ -17,7 +17,7 @@ export default function Game() {
   const {
     phase, dayNumber, players, messages, myId, myRole, myTeam,
     seerResults, winner, phaseEndTime, votes, error, clearError,
-    hunterPlayerId, reset,
+    hunterPlayerId,
   } = useGameStore();
 
   const [nightTarget, setNightTarget] = useState<string | undefined>();
@@ -44,16 +44,14 @@ export default function Game() {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(interval);
-          reset();
-          socket.disconnect();
-          navigate('/');
+          navigate('/lobby');
           return 0;
         }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [phase, winner, navigate, reset]);
+  }, [phase, winner, navigate]);
 
   useEffect(() => {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
@@ -119,13 +117,13 @@ export default function Game() {
             </div>
 
             <p className="text-gray-600 text-sm mt-6">
-              {countdown} saniye sonra ana menüye dönülüyor...
+              {countdown} saniye sonra lobiye dönülüyor...
             </p>
             <button
               className="mt-3 text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
-              onClick={() => { reset(); socket.disconnect(); navigate('/'); }}
+              onClick={() => navigate('/lobby')}
             >
-              Hemen çık
+              Hemen lobiye dön
             </button>
           </div>
         </div>
