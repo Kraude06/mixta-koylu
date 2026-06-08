@@ -1,0 +1,8 @@
+{
+  "build": {
+    "cmd": "npm run build --workspace=shared && npm run build --workspace=server"
+  },
+  "start": {
+    "cmd": "node server/dist/index.js"
+  }
+}
