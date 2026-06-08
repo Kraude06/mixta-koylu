@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
     "build": "npm run build --workspace=shared && npm run build --workspace=server && npm run build --workspace=web",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "start": "node_modules/.bin/tsx server/src/index.ts"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
