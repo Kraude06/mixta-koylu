@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #07070f;
+    color: #e2d9f3;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1a1a2e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #7f1d1d;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blood-700 hover:bg-blood-600 text-white font-bold py-2 px-4 rounded-lg
+           transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed
+           border border-blood-600 hover:border-blood-500 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-white/10 text-gray-300 hover:text-white
+           font-medium py-2 px-4 rounded-lg transition-all duration-200
+           border border-white/20 hover:border-white/40 active:scale-95;
+  }
+
+  .card {
+    @apply bg-night-800 border border-white/10 rounded-xl p-4;
+  }
+
+  .input-field {
+    @apply bg-night-900 border border-white/20 text-white placeholder-gray-500
+           rounded-lg px-4 py-2 w-full focus:outline-none focus:border-blood-600
+           focus:ring-1 focus:ring-blood-600 transition-colors;
+  }
+
+  .phase-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold;
+  }
+
+  .chat-message {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+}
