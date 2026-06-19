@@ -73,26 +73,39 @@ export default function PhaseBar({
         {/* Sesli sohbet — aç/kapat */}
         <button
           onClick={onToggleVoice}
-          className={`text-lg transition-opacity ${
-            micError ? 'opacity-100' :
-            voiceActive ? 'opacity-100' :
-            voiceEnabled ? 'opacity-70 animate-pulse' :
-            'opacity-40 hover:opacity-70'
-          }`}
-          title={micError ?? (voiceActive ? 'Sesli sohbeti kapat' : voiceEnabled ? 'Bağlanıyor...' : 'Sesli sohbet')}
-          style={{ color: micError ? '#f87171' : voiceActive ? '#4ade80' : undefined }}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-semibold transition-all"
+          title={micError ?? (voiceActive ? 'Sesli sohbeti kapat' : voiceEnabled ? 'Bağlanıyor...' : 'Sesli sohbet aç')}
+          style={{
+            background: micError
+              ? 'rgba(239,68,68,0.2)'
+              : voiceActive
+                ? 'rgba(74,222,128,0.15)'
+                : 'rgba(255,255,255,0.08)',
+            border: micError
+              ? '1px solid rgba(239,68,68,0.5)'
+              : voiceActive
+                ? '1px solid rgba(74,222,128,0.4)'
+                : '1px solid rgba(255,255,255,0.12)',
+            color: micError ? '#f87171' : voiceActive ? '#4ade80' : '#9ca3af',
+          }}
         >
-          🎤
+          <span>{micError ? '⚠️' : '🎤'}</span>
+          <span>{micError ? 'Hata' : voiceActive ? 'Ses Açık' : voiceEnabled ? '...' : 'Ses'}</span>
         </button>
 
         {/* Mikrofon sustur */}
         {voiceActive && (
           <button
             onClick={onToggleMic}
-            className={`text-lg transition-opacity ${isMicMuted ? 'opacity-50' : 'opacity-100'}`}
+            className="px-2 py-1 rounded-lg text-sm font-semibold transition-all"
             title={isMicMuted ? 'Mikrofon aç' : 'Mikrofonu kapat'}
+            style={{
+              background: isMicMuted ? 'rgba(239,68,68,0.15)' : 'rgba(74,222,128,0.1)',
+              border: isMicMuted ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(74,222,128,0.3)',
+              color: isMicMuted ? '#f87171' : '#86efac',
+            }}
           >
-            {isMicMuted ? '🔕' : '🎙️'}
+            {isMicMuted ? '🔇 Susuk' : '🎙️ Açık'}
           </button>
         )}
       </div>

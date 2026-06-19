@@ -22,6 +22,21 @@ export interface VoiceChatState {
   toggleMute: () => void;
 }
 
+function makeAudio(muted: boolean): HTMLAudioElement {
+  const el = document.createElement('audio');
+  el.autoplay = true;
+  el.muted = muted;
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  return el;
+}
+
+function removeAudio(el: HTMLAudioElement) {
+  el.pause();
+  el.srcObject = null;
+  el.remove();
+}
+
 export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): VoiceChatState {
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef(new Map<string, Peer>());
@@ -34,10 +49,12 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
 
   useEffect(() => { permittedRef.current = permittedPeers; }, [permittedPeers]);
 
-  // Mute/unmute remote streams when phase-based permissions change
+  // Faz değişince izin verilen akışların sesini güncelle
   useEffect(() => {
     peersRef.current.forEach((peer, peerId) => {
-      peer.audio.muted = !permittedPeers.has(peerId);
+      const shouldMute = !permittedPeers.has(peerId);
+      peer.audio.muted = shouldMute;
+      if (!shouldMute) peer.audio.play().catch(() => {});
     });
   }, [permittedPeers]);
 
@@ -45,8 +62,7 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
     const peer = peersRef.current.get(peerId);
     if (!peer) return;
     peer.pc.close();
-    peer.audio.pause();
-    peer.audio.srcObject = null;
+    removeAudio(peer.audio);
     peersRef.current.delete(peerId);
     setVoicePeers(prev => {
       const next = new Set(prev);
@@ -58,9 +74,7 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
   const addPeer = useCallback((peerId: string): RTCPeerConnection => {
     closePeer(peerId);
     const pc = new RTCPeerConnection(ICE_CONFIG);
-    const audio = new Audio();
-    audio.autoplay = true;
-    audio.muted = !permittedRef.current.has(peerId);
+    const audio = makeAudio(!permittedRef.current.has(peerId));
     peersRef.current.set(peerId, { pc, audio });
 
     localStreamRef.current?.getTracks().forEach(t => {
@@ -72,31 +86,37 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
       if (!peer) return;
       peer.audio.srcObject = e.streams[0];
       peer.audio.muted = !permittedRef.current.has(peerId);
+      peer.audio.play().catch(err => console.warn('[voice] play blocked:', err));
     };
 
     pc.onicecandidate = (e) => {
       if (!e.candidate) return;
-      const ice: VoiceICE = {
+      socket.emit('voice:ice', peerId, {
         candidate: e.candidate.candidate,
         sdpMid: e.candidate.sdpMid,
         sdpMLineIndex: e.candidate.sdpMLineIndex,
         usernameFragment: e.candidate.usernameFragment,
-      };
-      socket.emit('voice:ice', peerId, ice);
+      });
     };
 
     pc.onconnectionstatechange = () => {
+      console.log(`[voice] ${peerId} → ${pc.connectionState}`);
       if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
         closePeer(peerId);
       }
     };
 
+    pc.onicegatheringstatechange = () => {
+      console.log(`[voice] ICE gathering: ${pc.iceGatheringState}`);
+    };
+
     return pc;
   }, [closePeer]);
 
-  // Socket event listeners (stable for component lifetime)
+  // Socket event handlers
   useEffect(() => {
     const onPeerReady = async (peerId: string) => {
+      console.log('[voice] peer ready:', peerId);
       if (!localStreamRef.current) return;
       setVoicePeers(prev => new Set([...prev, peerId]));
       const pc = addPeer(peerId);
@@ -109,9 +129,13 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
       }
     };
 
-    const onPeerLeft = (peerId: string) => closePeer(peerId);
+    const onPeerLeft = (peerId: string) => {
+      console.log('[voice] peer left:', peerId);
+      closePeer(peerId);
+    };
 
     const onOffer = async (from: string, sdp: VoiceSDP) => {
+      console.log('[voice] offer from:', from);
       if (!localStreamRef.current) return;
       setVoicePeers(prev => new Set([...prev, from]));
       const pc = addPeer(from);
@@ -126,11 +150,14 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
     };
 
     const onAnswer = async (from: string, sdp: VoiceSDP) => {
+      console.log('[voice] answer from:', from);
       const peer = peersRef.current.get(from);
       if (!peer) return;
       try {
         await peer.pc.setRemoteDescription(new RTCSessionDescription(sdp as RTCSessionDescriptionInit));
-      } catch {}
+      } catch (err) {
+        console.error('[voice] setRemoteDescription error', err);
+      }
     };
 
     const onIce = async (from: string, candidate: VoiceICE) => {
@@ -156,7 +183,7 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
     };
   }, [addPeer, closePeer]);
 
-  // Enable / disable voice
+  // Sesi aç / kapat
   useEffect(() => {
     if (!enabled) {
       socket.emit('voice:leave');
@@ -182,12 +209,17 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
         localStreamRef.current = stream;
         setMicError(null);
         setVoiceActive(true);
+        console.log('[voice] mikrofon açıldı, odaya bildiriliyor...');
         socket.emit('voice:ready', (existingPeers: string[]) => {
+          console.log('[voice] mevcut peers:', existingPeers);
           setVoicePeers(new Set(existingPeers));
         });
       })
-      .catch(() => {
-        if (active) setMicError('Mikrofon erişimi reddedildi.');
+      .catch(err => {
+        if (active) {
+          console.error('[voice] getUserMedia hatası:', err);
+          setMicError('Mikrofon erişimi reddedildi.');
+        }
       });
 
     return () => { active = false; };
