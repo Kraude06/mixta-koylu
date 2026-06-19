@@ -282,7 +282,10 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     if (room && playerId) {
       room.removePlayer(playerId);
       io.to(room.code).emit('room:player-list', room.getPublicState().players);
-      if (room.getPlayerCount() === 0) {
+      // Odayı yalnızca lobi fazında ve tamamen boşsa sil.
+      // Oyun sırasında biri disconnect olsa da oda korunur,
+      // böylece resetToLobby timer'ı iptal olmaz.
+      if (room.getPhase() === 'lobby' && room.getPlayerCount() === 0) {
         rooms.delete(room.code);
         console.log(`[-] Oda silindi: ${room.code}`);
       }

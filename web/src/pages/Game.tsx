@@ -84,13 +84,16 @@ export default function Game() {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(interval);
+          // Server'dan room:joined gelmese bile lobby'e yönlendir
+          useGameStore.setState({ phase: 'lobby', winner: null });
+          navigate('/lobby');
           return 0;
         }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [phase, winner]);
+  }, [phase, winner, navigate]);
 
   useEffect(() => {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
