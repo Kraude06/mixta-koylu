@@ -9,7 +9,9 @@ interface Props {
 
 const phaseConfig: Record<PhaseType, { label: string; icon: string; color: string }> = {
   lobby: { label: 'Lobi', icon: '🏰', color: 'text-gray-400' },
-  day: { label: 'Gündüz', icon: '☀️', color: 'text-yellow-400' },
+  day: { label: 'Gündüz — Oylama', icon: '☀️', color: 'text-yellow-400' },
+  trial: { label: 'Savunma', icon: '⚖️', color: 'text-amber-300' },
+  verdict: { label: 'Karar Oylaması', icon: '🗳️', color: 'text-orange-400' },
   night: { label: 'Gece', icon: '🌙', color: 'text-indigo-400' },
   'hunter-revenge': { label: 'Avcı İntikamı', icon: '🏹', color: 'text-orange-400' },
   'game-over': { label: 'Oyun Bitti', icon: '🎮', color: 'text-blood-400' },

@@ -15,6 +15,8 @@ export default function Lobby() {
     includeHunter: false,
     dayDuration: 120,
     nightDuration: 60,
+    trialDuration: 45,
+    verdictDuration: 30,
   });
 
   useEffect(() => {
@@ -26,12 +28,14 @@ export default function Lobby() {
         includeHunter: settings.includeHunter,
         dayDuration: settings.dayDuration,
         nightDuration: settings.nightDuration,
+        trialDuration: settings.trialDuration,
+        verdictDuration: settings.verdictDuration,
       });
     }
   }, [settings]);
 
   useEffect(() => {
-    const activePhases = ['day', 'night', 'hunter-revenge'];
+    const activePhases = ['day', 'trial', 'verdict', 'night', 'hunter-revenge'];
     if (activePhases.includes(phase)) navigate('/game');
   }, [phase, navigate]);
 
@@ -182,6 +186,36 @@ export default function Lobby() {
                   <span>20s</span><span>120s</span>
                 </div>
               </div>
+              <div>
+                <label className="text-sm text-gray-400 block mb-1">
+                  ⚖️ Savunma Süresi
+                  <span className="text-amber-400 ml-1 font-bold">{localSettings.trialDuration}s</span>
+                </label>
+                <input
+                  type="range" min={15} max={90} step={15}
+                  value={localSettings.trialDuration}
+                  onChange={(e) => set('trialDuration', Number(e.target.value))}
+                  className="w-full accent-amber-500"
+                />
+                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                  <span>15s</span><span>90s</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 block mb-1">
+                  🗳️ Karar Süresi
+                  <span className="text-orange-400 ml-1 font-bold">{localSettings.verdictDuration}s</span>
+                </label>
+                <input
+                  type="range" min={15} max={60} step={15}
+                  value={localSettings.verdictDuration}
+                  onChange={(e) => set('verdictDuration', Number(e.target.value))}
+                  className="w-full accent-orange-500"
+                />
+                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                  <span>15s</span><span>60s</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -197,6 +231,8 @@ export default function Lobby() {
               <span>Avcı:</span><span>{settings.includeHunter ? '✅ Var' : '❌ Yok'}</span>
               <span>Gündüz:</span><span>{settings.dayDuration}s</span>
               <span>Gece:</span><span>{settings.nightDuration}s</span>
+              <span>Savunma:</span><span>{settings.trialDuration}s</span>
+              <span>Karar:</span><span>{settings.verdictDuration}s</span>
             </div>
           </div>
         )}

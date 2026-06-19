@@ -21,6 +21,8 @@ interface GameStore {
   eliminatedPlayerId: string | null;
   hunterPlayerId: string | null;
   votes: Record<string, string | undefined>;
+  verdictVotes: Record<string, 'guilty' | 'innocent' | undefined>;
+  accusedPlayerId: string | null;
   settings: GameSettings | null;
   myNotes: string;
   error: string | null;
@@ -50,6 +52,8 @@ const defaultState = {
   eliminatedPlayerId: null,
   hunterPlayerId: null,
   votes: {},
+  verdictVotes: {},
+  accusedPlayerId: null,
   settings: null,
   myNotes: '',
   error: null,
@@ -82,6 +86,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     phaseEndTime: state.phaseEndTime ?? null,
     eliminatedPlayerId: state.eliminatedPlayerId ?? null,
     hunterPlayerId: state.hunterPlayerId ?? null,
+    accusedPlayerId: state.accusedPlayerId ?? null,
     ...(settings ? { settings } : {}),
   })),
 }));
@@ -109,18 +114,25 @@ socket.on('game:state', (state) => {
     phaseEndTime: state.phaseEndTime ?? null,
     eliminatedPlayerId: state.eliminatedPlayerId ?? null,
     hunterPlayerId: state.hunterPlayerId ?? null,
+    accusedPlayerId: state.accusedPlayerId ?? null,
     winner: state.winner ?? null,
   });
 });
 
 socket.on('game:phase', (phase, dayNumber, endTime) => {
-  useGameStore.setState({
+  useGameStore.setState((prev) => ({
     phase,
     dayNumber,
     phaseEndTime: endTime,
     votes: {},
+    verdictVotes: {},
     eliminatedPlayerId: null,
-  });
+    accusedPlayerId: phase === 'trial' || phase === 'verdict' ? prev.accusedPlayerId : null,
+  }));
+});
+
+socket.on('verdict:update', (votes) => {
+  useGameStore.setState({ verdictVotes: votes });
 });
 
 socket.on('game:eliminated', (playerId, role, reason) => {

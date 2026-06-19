@@ -8,6 +8,7 @@ interface Props {
   myRole: RoleType | null;
   isAlive: boolean;
   myId: string;
+  accusedPlayerId?: string | null;
 }
 
 const channelLabel: Record<ChatChannel, string> = {
@@ -16,16 +17,17 @@ const channelLabel: Record<ChatChannel, string> = {
   system: '📜 Sistem',
 };
 
-function canSendPublic(phase: PhaseType, isAlive: boolean): boolean {
+function canSendPublic(phase: PhaseType, isAlive: boolean, myId: string, accusedPlayerId?: string | null): boolean {
   if (!isAlive) return false;
-  return phase === 'day' || phase === 'hunter-revenge' || phase === 'game-over';
+  if (phase === 'trial') return myId === accusedPlayerId;
+  return phase === 'day' || phase === 'verdict' || phase === 'hunter-revenge' || phase === 'game-over';
 }
 
 function canSendVampire(phase: PhaseType, myRole: RoleType | null, isAlive: boolean): boolean {
   return isAlive && myRole === 'vampire' && phase === 'night';
 }
 
-export default function Chat({ messages, phase, myRole, isAlive, myId }: Props) {
+export default function Chat({ messages, phase, myRole, isAlive, myId, accusedPlayerId }: Props) {
   const [input, setInput] = useState('');
   const [activeChannel, setActiveChannel] = useState<ChatChannel>('public');
   const endRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,7 @@ export default function Chat({ messages, phase, myRole, isAlive, myId }: Props) 
 
   const canSend = activeChannel === 'vampire'
     ? canSendVampire(phase, myRole, isAlive)
-    : canSendPublic(phase, isAlive);
+    : canSendPublic(phase, isAlive, myId, accusedPlayerId);
 
   function msgBubble(msg: Message) {
     const isOwn = msg.senderId === myId;
@@ -151,7 +153,11 @@ export default function Chat({ messages, phase, myRole, isAlive, myId }: Props) 
           </p>
         ) : !canSend ? (
           <p className="text-center text-sm text-gray-500" style={{ fontFamily: 'system-ui, sans-serif' }}>
-            {phase === 'night' && !isVampire ? '🌙 Gece uyuyorsun...' : 'Şu an konuşamazsın'}
+            {phase === 'night' && !isVampire
+            ? '🌙 Gece uyuyorsun...'
+            : phase === 'trial'
+              ? '⚖️ Savunma süresi — sadece sanık konuşabilir'
+              : 'Şu an konuşamazsın'}
           </p>
         ) : (
           <div className="flex gap-2">

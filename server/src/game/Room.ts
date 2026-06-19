@@ -12,6 +12,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   includeHunter: false,
   dayDuration: 120,
   nightDuration: 60,
+  trialDuration: 45,
+  verdictDuration: 30,
 };
 
 function assignRoles(playerIds: string[], settings: GameSettings): Record<string, RoleType> {
@@ -52,6 +54,8 @@ export class Room {
   private winner?: TeamType;
   private eliminatedPlayerId?: string;
   private hunterPending?: string;
+  private accusedPlayerId?: string;
+  private verdictVotes: Record<string, 'guilty' | 'innocent'> = {};
 
   onBroadcast?: (event: string, data: unknown) => void;
   onSendTo?: (playerId: string, event: string, data: unknown) => void;
@@ -100,6 +104,7 @@ export class Room {
       phaseEndTime: this.phaseEndTime,
       eliminatedPlayerId: this.eliminatedPlayerId,
       hunterPlayerId: this.hunterPending,
+      accusedPlayerId: this.accusedPlayerId,
     };
   }
 
@@ -218,15 +223,71 @@ export class Room {
 
     const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]);
     if (sorted.length === 0 || (sorted.length > 1 && sorted[0][1] === sorted[1][1])) {
-      this.addSystemMessage('🤝 Oylar eşit — kimse idam edilmedi.');
-      this.checkWin() || this.startNight();
+      this.addSystemMessage('🤝 Oylar eşit — kimse yargılanmıyor, gece başlıyor.');
+      this.startNight();
       return;
     }
 
-    const eliminatedId = sorted[0][0];
-    this.eliminatePlayer(eliminatedId, 'voted');
-    if (!this.hunterPending) {
-      this.checkWin() || this.startNight();
+    this.startTrial(sorted[0][0]);
+  }
+
+  private startTrial(accusedId: string): void {
+    this.accusedPlayerId = accusedId;
+    this.verdictVotes = {};
+    this.phase = 'trial';
+    this.phaseEndTime = Date.now() + this.settings.trialDuration * 1000;
+    const accused = this.players[accusedId];
+    this.addSystemMessage(`⚖️ ${accused?.name} meydana çıktı — savunma süresi başladı!`);
+    this.broadcast('game:state', this.getPublicState());
+    this.broadcast('game:phase', this.phase, this.dayNumber, this.phaseEndTime);
+    this.schedulePhaseEnd(this.settings.trialDuration * 1000, () => this.startVerdict());
+  }
+
+  private startVerdict(): void {
+    this.phase = 'verdict';
+    this.verdictVotes = {};
+    this.phaseEndTime = Date.now() + this.settings.verdictDuration * 1000;
+    const accused = this.players[this.accusedPlayerId!];
+    this.addSystemMessage(`🗳️ ${accused?.name} suçlu mu? Oyunuzu kullanın!`);
+    this.broadcast('game:phase', this.phase, this.dayNumber, this.phaseEndTime);
+    this.schedulePhaseEnd(this.settings.verdictDuration * 1000, () => this.resolveVerdict());
+  }
+
+  castVerdictVote(voterId: string, vote: 'guilty' | 'innocent'): string | null {
+    if (this.phase !== 'verdict') return 'Şu an karar zamanı değil.';
+    const voter = this.players[voterId];
+    if (!voter?.isAlive) return 'Ölü oyuncular oy kullanamaz.';
+
+    this.verdictVotes[voterId] = vote;
+    this.broadcast('verdict:update', { ...this.verdictVotes });
+
+    const alive = Object.values(this.players).filter(p => p.isAlive);
+    if (alive.every(p => this.verdictVotes[p.id])) {
+      this.clearPhaseTimer();
+      this.resolveVerdict();
+    }
+    return null;
+  }
+
+  private resolveVerdict(): void {
+    if (this.phase !== 'verdict') return;
+
+    const guiltyCount = Object.values(this.verdictVotes).filter(v => v === 'guilty').length;
+    const innocentCount = Object.values(this.verdictVotes).filter(v => v === 'innocent').length;
+    const accusedId = this.accusedPlayerId!;
+    const accusedName = this.players[accusedId]?.name ?? '?';
+    this.accusedPlayerId = undefined;
+    this.verdictVotes = {};
+
+    if (guiltyCount > innocentCount) {
+      this.addSystemMessage(`⚖️ ${accusedName} suçlu bulundu ve idam edildi! (${guiltyCount}e karşı ${innocentCount})`);
+      this.eliminatePlayer(accusedId, 'voted');
+      if (!this.hunterPending) {
+        this.checkWin() || this.startNight();
+      }
+    } else {
+      this.addSystemMessage(`⚖️ ${accusedName} suçsuz bulundu ve serbest bırakıldı. (${innocentCount}e karşı ${guiltyCount})`);
+      this.startNight();
     }
   }
 
@@ -398,6 +459,8 @@ export class Room {
     this.winner = undefined;
     this.eliminatedPlayerId = undefined;
     this.hunterPending = undefined;
+    this.accusedPlayerId = undefined;
+    this.verdictVotes = {};
     this.nightActions = {};
     this.seerResults = {};
     this.lastDoctorTarget = null;
@@ -436,6 +499,9 @@ export class Room {
     }
     if (channel === 'public' && this.phase === 'night' && player.isAlive) {
       return 'Gece vakti herkese konuşamazsın.';
+    }
+    if (channel === 'public' && this.phase === 'trial' && playerId !== this.accusedPlayerId) {
+      return 'Savunma sırasında sadece sanık konuşabilir.';
     }
 
     const msg: Message = {

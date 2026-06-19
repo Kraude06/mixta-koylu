@@ -166,6 +166,14 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     if (err) socket.emit('error', err);
   });
 
+  socket.on('game:verdict-vote', (vote) => {
+    const room = getRoom(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    if (!room || !playerId) return;
+    const err = room.castVerdictVote(playerId, vote);
+    if (err) socket.emit('error', err);
+  });
+
   socket.on('game:hunter-shot', (targetId) => {
     const room = getRoom(socket.id);
     const playerId = socketToPlayer.get(socket.id);

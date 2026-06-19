@@ -16,8 +16,8 @@ export default function Game() {
   const navigate = useNavigate();
   const {
     phase, dayNumber, players, messages, myId, myRole, myTeam,
-    seerResults, winner, phaseEndTime, votes, error, clearError,
-    hunterPlayerId,
+    seerResults, winner, phaseEndTime, votes, verdictVotes, accusedPlayerId,
+    error, clearError, hunterPlayerId,
   } = useGameStore();
 
   const [nightTarget, setNightTarget] = useState<string | undefined>();
@@ -77,9 +77,18 @@ export default function Game() {
     socket.emit('game:hunter-shot', targetId);
   }
 
+  function handleVerdictVote(vote: 'guilty' | 'innocent') {
+    socket.emit('game:verdict-vote', vote);
+  }
+
   const showNightActions = phase === 'night' && isAlive && myRole && myRole !== 'villager';
   const showVoting = phase === 'day' && isAlive;
   const showHunterRevenge = isMyHunterRevenge;
+  const showVerdict = phase === 'verdict' && isAlive;
+  const myVerdictVote = myId ? verdictVotes[myId] : undefined;
+  const accusedPlayer = accusedPlayerId ? players[accusedPlayerId] : undefined;
+  const guiltyCount = Object.values(verdictVotes).filter(v => v === 'guilty').length;
+  const innocentCount = Object.values(verdictVotes).filter(v => v === 'innocent').length;
 
   const roleInfo = myRole ? ROLE_INFO[myRole] : null;
 
@@ -121,6 +130,52 @@ export default function Game() {
                 : 'Lobi yükleniyor...'}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Trial / Verdict banner */}
+      {(phase === 'trial' || phase === 'verdict') && accusedPlayer && (
+        <div className={`border-b px-4 py-3 ${phase === 'trial' ? 'bg-amber-950/60 border-amber-700' : 'bg-orange-950/60 border-orange-700'}`}>
+          <div className="text-center mb-2">
+            <span className="text-2xl">⚖️</span>
+            <span className={`ml-2 font-bold text-lg ${phase === 'trial' ? 'text-amber-300' : 'text-orange-300'}`}>
+              {accusedPlayer.name}
+            </span>
+            <span className="text-gray-400 text-sm ml-2">
+              {phase === 'trial' ? 'meydanda — savunmasını yapıyor' : 'hakkında karar veriliyor'}
+            </span>
+          </div>
+
+          {phase === 'verdict' && (
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-4 text-sm text-gray-400">
+                <span className="text-red-400 font-bold">Suçlu: {guiltyCount}</span>
+                <span className="text-green-400 font-bold">Suçsuz: {innocentCount}</span>
+              </div>
+              {showVerdict && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleVerdictVote('guilty')}
+                    className={`px-5 py-2 rounded-xl font-bold text-sm transition-all border
+                      ${myVerdictVote === 'guilty'
+                        ? 'bg-red-700 border-red-500 text-white'
+                        : 'bg-transparent border-red-800 text-red-400 hover:bg-red-900/40'}`}
+                  >
+                    🔴 Suçlu
+                  </button>
+                  <button
+                    onClick={() => handleVerdictVote('innocent')}
+                    className={`px-5 py-2 rounded-xl font-bold text-sm transition-all border
+                      ${myVerdictVote === 'innocent'
+                        ? 'bg-green-700 border-green-500 text-white'
+                        : 'bg-transparent border-green-800 text-green-400 hover:bg-green-900/40'}`}
+                  >
+                    🟢 Suçsuz
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -251,6 +306,7 @@ export default function Game() {
               myRole={myRole}
               isAlive={isAlive}
               myId={myId!}
+              accusedPlayerId={accusedPlayerId}
             />
           </div>
         </div>

@@ -1,6 +1,6 @@
 export type RoleType = 'villager' | 'vampire' | 'doctor' | 'seer' | 'hunter';
 export type TeamType = 'village' | 'vampire';
-export type PhaseType = 'lobby' | 'day' | 'night' | 'hunter-revenge' | 'game-over';
+export type PhaseType = 'lobby' | 'day' | 'trial' | 'verdict' | 'night' | 'hunter-revenge' | 'game-over';
 export type ChatChannel = 'public' | 'vampire' | 'system';
 
 export interface Player {
@@ -32,6 +32,8 @@ export interface GameSettings {
   includeHunter: boolean;
   dayDuration: number;
   nightDuration: number;
+  trialDuration: number;
+  verdictDuration: number;
 }
 
 export interface PublicGameState {
@@ -44,6 +46,7 @@ export interface PublicGameState {
   phaseEndTime?: number;
   eliminatedPlayerId?: string;
   hunterPlayerId?: string;
+  accusedPlayerId?: string;
 }
 
 export interface PersonalGameState extends PublicGameState {
@@ -116,6 +119,7 @@ export interface ServerToClientEvents {
   'game:hunter-triggered': (hunterId: string) => void;
   'chat:message': (msg: Message) => void;
   'vote:update': (votes: Record<string, string | undefined>) => void;
+  'verdict:update': (votes: Record<string, 'guilty' | 'innocent' | undefined>) => void;
   'seer:result': (targetId: string, team: TeamType) => void;
   'error': (message: string) => void;
 }
@@ -125,6 +129,7 @@ export interface ClientToServerEvents {
   'room:join': (roomCode: string, playerName: string, cb: (ok: boolean, err?: string, playerId?: string) => void) => void;
   'game:start': (settings: Partial<GameSettings>) => void;
   'game:vote': (targetId: string) => void;
+  'game:verdict-vote': (vote: 'guilty' | 'innocent') => void;
   'game:night-action': (targetId: string) => void;
   'game:hunter-shot': (targetId: string) => void;
   'chat:send': (content: string, channel: ChatChannel) => void;
