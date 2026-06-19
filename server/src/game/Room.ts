@@ -203,12 +203,6 @@ export class Room {
     const votes: Record<string, string | undefined> = {};
     Object.values(this.players).forEach(p => { votes[p.id] = p.vote; });
     this.broadcast('vote:update', votes);
-
-    const alive = Object.values(this.players).filter(p => p.isAlive);
-    if (alive.every(p => p.vote)) {
-      this.clearPhaseTimer();
-      this.resolveVote();
-    }
     return null;
   }
 
@@ -265,12 +259,6 @@ export class Room {
 
     this.verdictVotes[voterId] = vote;
     this.broadcast('verdict:update', { ...this.verdictVotes });
-
-    const alive = Object.values(this.players).filter(p => p.isAlive);
-    if (alive.every(p => this.verdictVotes[p.id])) {
-      this.clearPhaseTimer();
-      this.resolveVerdict();
-    }
     return null;
   }
 
