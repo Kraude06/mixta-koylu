@@ -94,6 +94,9 @@ export default function Game() {
 
   useEffect(() => {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
+    // Mobilde oyuncular panelini otomatik aç
+    if (phase === 'day' || phase === 'trial' || phase === 'verdict') setActivePanel('players');
+    if (phase === 'night') setActivePanel('players');
   }, [phase]);
 
   // Faz duyurusu + ses
@@ -209,7 +212,6 @@ export default function Game() {
       className="h-screen flex flex-col bg-night-950 overflow-hidden"
       onClick={initAudio}
     >
-      <SkyScene phase={phase} />
       <PhaseBar
         phase={phase}
         dayNumber={dayNumber}
@@ -452,9 +454,15 @@ export default function Game() {
       )}
 
       {/* Main layout */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 relative overflow-hidden">
+
+        {/* Arka plan sahne (filigran) */}
+        <SkyScene phase={phase} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(3,0,14,0.72)' }} />
+
         {/* Sidebar - Players (desktop) */}
-        <div className="hidden md:flex flex-col w-56 border-r border-white/10 bg-night-900 overflow-y-auto shrink-0">
+        <div className="hidden md:flex flex-col w-56 border-r border-white/10 overflow-y-auto shrink-0 relative z-10"
+          style={{ background: 'rgba(4,0,18,0.55)', backdropFilter: 'blur(12px)' }}>
           <div className="p-2 border-b border-white/10 text-xs text-gray-500 font-semibold uppercase tracking-wide">
             Oyuncular ({playerList.filter(p => p.isAlive).length}/{playerList.length})
           </div>
@@ -499,7 +507,7 @@ export default function Game() {
         </div>
 
         {/* Main area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 relative z-10">
           {/* Mobile nav */}
           <div className="md:hidden flex border-b border-white/10 shrink-0">
             {(['players', 'chat', 'notes'] as Panel[]).map((p) => (
@@ -561,14 +569,15 @@ export default function Game() {
         </div>
 
         {/* Notes sidebar (desktop) */}
-        <div className="hidden md:flex flex-col w-56 border-l border-white/10 bg-night-900">
+        <div className="hidden md:flex flex-col w-56 border-l border-white/10 relative z-10"
+          style={{ background: 'rgba(4,0,18,0.55)', backdropFilter: 'blur(12px)' }}>
           <NotesPad />
         </div>
       </div>
 
       {/* Mobile notes panel (bottom sheet when active) */}
       {activePanel === 'notes' && (
-        <div className="md:hidden flex-1 bg-night-900 flex flex-col min-h-0">
+        <div className="md:hidden flex-1 flex flex-col min-h-0" style={{ background: 'rgba(4,0,18,0.85)' }}>
           <NotesPad />
         </div>
       )}

@@ -89,14 +89,13 @@ export default function SkyScene({ phase }: Props) {
   const isVerdict = phase === 'verdict';
 
   return (
-    <div className="relative w-full overflow-hidden shrink-0" style={{ height: 120 }}>
-      <svg
-        viewBox="0 0 100 100"
-        className="w-full h-full"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block' }}
-      >
+    <svg
+      viewBox="0 0 100 100"
+      className="w-full h-full"
+      preserveAspectRatio="xMidYMid slice"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block', position: 'absolute', inset: 0 }}
+    >
         <defs>
           <linearGradient id="sky-day" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={isTrial ? '#2d1a00' : isVerdict ? '#2d0e00' : '#1e6fa8'}/>
@@ -198,7 +197,6 @@ export default function SkyScene({ phase }: Props) {
 
         {/* Alt sis katmanı */}
         <rect x="0" y="65%" width="100" height="12%" fill="white" opacity="0.04"/>
-      </svg>
-    </div>
+    </svg>
   );
 }
