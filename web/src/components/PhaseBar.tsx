@@ -5,6 +5,8 @@ interface Props {
   phase: PhaseType;
   dayNumber: number;
   phaseEndTime: number | null;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
 }
 
 const phaseConfig: Record<PhaseType, { label: string; icon: string; color: string }> = {
@@ -17,7 +19,7 @@ const phaseConfig: Record<PhaseType, { label: string; icon: string; color: strin
   'game-over': { label: 'Oyun Bitti', icon: '🎮', color: 'text-blood-400' },
 };
 
-export default function PhaseBar({ phase, dayNumber, phaseEndTime }: Props) {
+export default function PhaseBar({ phase, dayNumber, phaseEndTime, soundEnabled, onToggleSound }: Props) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const config = phaseConfig[phase] ?? phaseConfig.lobby;
 
@@ -43,11 +45,20 @@ export default function PhaseBar({ phase, dayNumber, phaseEndTime }: Props) {
           <span className="text-gray-500 text-xs">Gün {dayNumber}</span>
         )}
       </div>
-      {remaining !== null && (
-        <div className={`font-mono font-bold text-lg ${urgency ? 'text-blood-400 animate-pulse' : 'text-gray-300'}`}>
-          {Math.floor(remaining / 60).toString().padStart(2, '0')}:{(remaining % 60).toString().padStart(2, '0')}
-        </div>
-      )}
+      <div className="flex items-center gap-3">
+        {remaining !== null && (
+          <div className={`font-mono font-bold text-lg ${urgency ? 'text-blood-400 animate-pulse' : 'text-gray-300'}`}>
+            {Math.floor(remaining / 60).toString().padStart(2, '0')}:{(remaining % 60).toString().padStart(2, '0')}
+          </div>
+        )}
+        <button
+          onClick={onToggleSound}
+          className="text-lg opacity-60 hover:opacity-100 transition-opacity"
+          title={soundEnabled ? 'Sesi kapat' : 'Sesi aç'}
+        >
+          {soundEnabled ? '🔊' : '🔇'}
+        </button>
+      </div>
     </div>
   );
 }

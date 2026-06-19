@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROLE_INFO } from '@vampir-koylu/shared';
+import { ROLE_INFO, PhaseType } from '@vampir-koylu/shared';
 import { socket } from '../socket';
 import { useGameStore } from '../store/gameStore';
 import PhaseBar from '../components/PhaseBar';
@@ -9,6 +9,10 @@ import Chat from '../components/Chat';
 import NotesPad from '../components/NotesPad';
 import RoleCard from '../components/RoleCard';
 import SkyScene from '../components/SkyScene';
+import {
+  initAudio, playDay, playNight, playTrial, playVerdict,
+  playDeath, playGameOver, playVoteCast, playHunterRevenge,
+} from '../utils/sounds';
 
 type Panel = 'players' | 'chat' | 'notes';
 
@@ -26,6 +30,9 @@ export default function Game() {
   const [toast, setToast] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(10);
   const [deathDismissIn, setDeathDismissIn] = useState(7);
+  const [announcement, setAnnouncement] = useState<PhaseType | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const prevPhaseRef = useRef<PhaseType>('lobby');
 
   const me = myId ? players[myId] : undefined;
   const isAlive = me?.isAlive ?? false;
@@ -57,6 +64,39 @@ export default function Game() {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
   }, [phase]);
 
+  // Faz duyurusu + ses
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (phase === 'lobby' || phase === 'game-over' || phase === prev) return;
+
+    const announceable: PhaseType[] = ['day', 'night', 'trial', 'verdict', 'hunter-revenge'];
+    if (announceable.includes(phase)) {
+      setAnnouncement(phase);
+      const t = setTimeout(() => setAnnouncement(null), 2400);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    if (!soundEnabled) return;
+    switch (phase) {
+      case 'day': playDay(); break;
+      case 'night': playNight(); break;
+      case 'trial': playTrial(); break;
+      case 'verdict': playVerdict(); break;
+      case 'hunter-revenge': playHunterRevenge(); break;
+    }
+  }, [phase, soundEnabled]);
+
+  useEffect(() => {
+    if (deathEvent && soundEnabled) playDeath();
+  }, [deathEvent, soundEnabled]);
+
+  useEffect(() => {
+    if (phase === 'game-over' && winner && soundEnabled) playGameOver(winner);
+  }, [phase, winner, soundEnabled]);
+
   useEffect(() => {
     if (!deathEvent) return;
     setDeathDismissIn(7);
@@ -82,6 +122,7 @@ export default function Game() {
   }, [error, clearError]);
 
   function handleVote(targetId: string) {
+    if (soundEnabled) playVoteCast();
     socket.emit('game:vote', targetId);
   }
 
@@ -95,6 +136,7 @@ export default function Game() {
   }
 
   function handleVerdictVote(vote: 'guilty' | 'innocent') {
+    if (soundEnabled) playVoteCast();
     socket.emit('game:verdict-vote', vote);
   }
 
@@ -122,10 +164,61 @@ export default function Game() {
     { left: 95, h: 35, d: 0.08 },
   ];
 
+  const ANNOUNCEMENT_CONFIG: Partial<Record<PhaseType, { icon: string; label: string; bg: string; text: string }>> = {
+    day:              { icon: '☀️', label: 'Gündüz Başladı',      bg: 'from-yellow-900/80 to-orange-900/60', text: 'text-yellow-300' },
+    night:            { icon: '🌙', label: 'Gece Çöktü',           bg: 'from-indigo-950/90 to-violet-950/80', text: 'text-indigo-300' },
+    trial:            { icon: '⚖️', label: 'Savunma Başladı',      bg: 'from-amber-950/90 to-yellow-950/80',  text: 'text-amber-300' },
+    verdict:          { icon: '🗳️', label: 'Karar Zamanı',          bg: 'from-orange-950/90 to-red-950/80',    text: 'text-orange-300' },
+    'hunter-revenge': { icon: '🏹', label: 'Avcı İntikamı',        bg: 'from-red-950/90 to-orange-950/80',    text: 'text-red-300' },
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-night-950 overflow-hidden">
+    <div
+      className="h-screen flex flex-col bg-night-950 overflow-hidden"
+      onClick={initAudio}
+    >
       <SkyScene phase={phase} />
-      <PhaseBar phase={phase} dayNumber={dayNumber} phaseEndTime={phaseEndTime} />
+      <PhaseBar
+        phase={phase}
+        dayNumber={dayNumber}
+        phaseEndTime={phaseEndTime}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled(v => !v)}
+      />
+
+      {/* Faz duyurusu */}
+      {announcement && ANNOUNCEMENT_CONFIG[announcement] && (
+        <div
+          className={`fixed inset-0 z-30 flex items-center justify-center pointer-events-none bg-gradient-to-b ${ANNOUNCEMENT_CONFIG[announcement]!.bg}`}
+          style={{ animation: 'phaseAnnounce 2.4s ease-in-out forwards' }}
+        >
+          <div className="text-center" style={{ animation: 'phaseScale 2.4s ease-in-out forwards' }}>
+            <div style={{ fontSize: 88, lineHeight: 1 }}>{ANNOUNCEMENT_CONFIG[announcement]!.icon}</div>
+            <h2 className={`text-4xl font-black mt-3 tracking-wide ${ANNOUNCEMENT_CONFIG[announcement]!.text}`}
+              style={{ textShadow: '0 0 40px currentColor' }}>
+              {ANNOUNCEMENT_CONFIG[announcement]!.label}
+            </h2>
+            {announcement === 'day' && dayNumber > 0 && (
+              <p className="text-yellow-500/70 text-lg mt-1">Gün {dayNumber}</p>
+            )}
+          </div>
+          <style>{`
+            @keyframes phaseAnnounce {
+              0%   { opacity: 0; }
+              12%  { opacity: 1; }
+              70%  { opacity: 1; }
+              100% { opacity: 0; }
+            }
+            @keyframes phaseScale {
+              0%   { transform: scale(0.85); }
+              12%  { transform: scale(1.03); }
+              20%  { transform: scale(1); }
+              70%  { transform: scale(1); }
+              100% { transform: scale(1.04); }
+            }
+          `}</style>
+        </div>
+      )}
 
       {/* Death overlay */}
       {deathEvent && (
