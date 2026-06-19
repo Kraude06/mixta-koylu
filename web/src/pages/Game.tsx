@@ -192,6 +192,25 @@ export default function Game() {
       ? 'Vampirler bu gece seni kurban seçti.'
       : 'Avcı son nefesinde seni yanına götürdü.';
 
+  const NIGHT_STARS_ANIM = [
+    { x: 8,  y: 10, size: 3,   delay: 0.08 },
+    { x: 20, y: 7,  size: 2,   delay: 0.14 },
+    { x: 35, y: 13, size: 2.5, delay: 0.20 },
+    { x: 50, y: 5,  size: 3,   delay: 0.07 },
+    { x: 65, y: 10, size: 2,   delay: 0.25 },
+    { x: 78, y: 6,  size: 3,   delay: 0.11 },
+    { x: 90, y: 16, size: 2,   delay: 0.17 },
+    { x: 13, y: 26, size: 2,   delay: 0.30 },
+    { x: 42, y: 20, size: 2.5, delay: 0.22 },
+    { x: 58, y: 23, size: 2,   delay: 0.33 },
+    { x: 4,  y: 38, size: 1.5, delay: 0.38 },
+    { x: 93, y: 33, size: 2,   delay: 0.27 },
+    { x: 72, y: 30, size: 1.5, delay: 0.43 },
+    { x: 28, y: 35, size: 2,   delay: 0.36 },
+    { x: 84, y: 42, size: 1.5, delay: 0.48 },
+    { x: 48, y: 40, size: 2,   delay: 0.42 },
+  ];
+
   const DRIPS = [
     { left: 6, h: 55, d: 0 }, { left: 14, h: 38, d: 0.07 }, { left: 24, h: 68, d: 0.05 },
     { left: 34, h: 44, d: 0.12 }, { left: 46, h: 72, d: 0.03 }, { left: 57, h: 40, d: 0.09 },
@@ -227,8 +246,65 @@ export default function Game() {
         onToggleMic={toggleMute}
       />
 
-      {/* Faz duyurusu */}
-      {announcement && ANNOUNCEMENT_CONFIG[announcement] && (
+      {/* Gece özel duyurusu */}
+      {announcement === 'night' && (
+        <div
+          className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none overflow-hidden"
+          style={{ animation: 'phaseAnnounce 2.4s ease-in-out forwards', background: 'linear-gradient(to bottom, #000208 0%, #020617 55%, #1e1b4b 100%)' }}
+        >
+          {/* Yıldızlar */}
+          {NIGHT_STARS_ANIM.map((s, i) => (
+            <div key={i} style={{
+              position: 'absolute', left: `${s.x}%`, top: `${s.y}%`,
+              width: s.size, height: s.size,
+              borderRadius: '50%', background: 'white', opacity: 0,
+              animation: `nightStarIn 0.4s ${s.delay}s ease-out forwards, nightStarTwinkle 1.8s ${s.delay + 0.5}s infinite`,
+            }} />
+          ))}
+
+          {/* Ay */}
+          <div style={{
+            position: 'absolute', right: '16%', top: '12%',
+            width: 68, height: 68, borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #f5efd8, #c8c0a0)',
+            boxShadow: '0 0 28px rgba(230,218,170,0.35), 0 0 60px rgba(200,190,150,0.12)',
+            animation: 'nightMoonIn 0.75s 0.12s cubic-bezier(0.34,1.4,0.64,1) both',
+          }} />
+
+          {/* Yarım ay gölgesi (gerçekçilik) */}
+          <div style={{
+            position: 'absolute', right: 'calc(16% - 10px)', top: 'calc(12% - 8px)',
+            width: 62, height: 62, borderRadius: '50%',
+            background: '#020a1a',
+            animation: 'nightMoonIn 0.75s 0.12s cubic-bezier(0.34,1.4,0.64,1) both',
+          }} />
+
+          {/* Metin */}
+          <div className="text-center relative z-10" style={{ animation: 'nightTextIn 0.65s 0.38s ease-out both' }}>
+            <div style={{ fontSize: 92, lineHeight: 1 }}>🌙</div>
+            <h2 className="text-4xl font-black mt-3 tracking-wide text-indigo-300"
+              style={{ textShadow: '0 0 40px #818cf8, 0 0 80px #4338ca60' }}>
+              Gece Çöktü
+            </h2>
+          </div>
+
+          <style>{`
+            @keyframes phaseAnnounce {
+              0%   { opacity: 0; }
+              12%  { opacity: 1; }
+              70%  { opacity: 1; }
+              100% { opacity: 0; }
+            }
+            @keyframes nightStarIn { to { opacity: 0.9; } }
+            @keyframes nightStarTwinkle { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.2; } }
+            @keyframes nightMoonIn { from { opacity: 0; transform: translateY(-22px) scale(0.72); } to { opacity: 1; transform: translateY(0) scale(1); } }
+            @keyframes nightTextIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+          `}</style>
+        </div>
+      )}
+
+      {/* Faz duyurusu (gece hariç) */}
+      {announcement && announcement !== 'night' && ANNOUNCEMENT_CONFIG[announcement] && (
         <div
           className={`fixed inset-0 z-30 flex items-center justify-center pointer-events-none bg-gradient-to-b ${ANNOUNCEMENT_CONFIG[announcement]!.bg}`}
           style={{ animation: 'phaseAnnounce 2.4s ease-in-out forwards' }}
