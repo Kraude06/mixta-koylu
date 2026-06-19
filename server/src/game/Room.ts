@@ -299,18 +299,6 @@ export class Room {
     this.nightActions[playerId] = targetId;
     this.players[playerId].nightActionDone = true;
     this.broadcast('game:state', this.getPublicState());
-
-    const actionRoles: RoleType[] = ['vampire', 'doctor', 'seer'];
-    if (this.settings.includeHunter) actionRoles.push('hunter');
-    const alive = Object.values(this.players).filter(p => p.isAlive);
-    const allActed = alive
-      .filter(p => actionRoles.includes(p.role!) && p.role !== 'hunter')
-      .every(p => this.nightActions[p.id]);
-
-    if (allActed) {
-      this.clearPhaseTimer();
-      this.resolveNight();
-    }
     return null;
   }
 
