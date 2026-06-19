@@ -31,7 +31,8 @@ export default function Lobby() {
   }, [settings]);
 
   useEffect(() => {
-    if (phase !== 'lobby') navigate('/game');
+    const activePhases = ['day', 'night', 'hunter-revenge'];
+    if (activePhases.includes(phase)) navigate('/game');
   }, [phase, navigate]);
 
   const playerList = Object.values(players);

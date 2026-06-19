@@ -23,12 +23,11 @@ const STARS = [
 ];
 
 export default function SkyScene({ phase }: Props) {
-  const isMorning = phase === 'morning';
   const isDay = phase === 'day';
   const isNight = phase === 'night';
   const isHunter = phase === 'hunter-revenge';
 
-  if (!isDay && !isNight && !isHunter && !isMorning) return null;
+  if (!isDay && !isNight && !isHunter) return null;
 
   return (
     <div
@@ -41,23 +40,11 @@ export default function SkyScene({ phase }: Props) {
         style={{
           background: isDay
             ? 'linear-gradient(to bottom, #38bdf8, #bae6fd, #e0f2fe)'
-            : isMorning
-              ? 'linear-gradient(to bottom, #1e3a5f, #f97316, #fbbf24, #fde68a)'
-              : isHunter
-                ? 'linear-gradient(to bottom, #431407, #7c2d12, #1c0a00)'
-                : 'linear-gradient(to bottom, #020617, #0f0f2e, #1e1b4b)',
+            : isHunter
+              ? 'linear-gradient(to bottom, #431407, #7c2d12, #1c0a00)'
+              : 'linear-gradient(to bottom, #020617, #0f0f2e, #1e1b4b)',
         }}
       />
-
-      {/* Sabah */}
-      {isMorning && (
-        <>
-          <div className="absolute" style={{ right: 60, top: 8, fontSize: 44, filter: 'drop-shadow(0 0 20px #f97316)', animation: 'float 4s ease-in-out infinite' }}>🌅</div>
-          <div className="absolute" style={{ left: 20, top: 30, fontSize: 26, opacity: 0.5, animation: 'drift1 20s ease-in-out infinite' }}>☁️</div>
-          <div className="absolute" style={{ left: 160, top: 15, fontSize: 20, opacity: 0.4, animation: 'drift2 25s ease-in-out infinite' }}>☁️</div>
-          <div className="absolute bottom-0 left-0 right-0" style={{ height: 18, background: 'linear-gradient(to top, #166534, #15803d)', borderRadius: '50% 50% 0 0 / 6px 6px 0 0' }} />
-        </>
-      )}
 
       {/* Gündüz */}
       {isDay && (

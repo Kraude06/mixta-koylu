@@ -44,14 +44,13 @@ export default function Game() {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(interval);
-          navigate('/lobby');
           return 0;
         }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [phase, winner, navigate]);
+  }, [phase, winner]);
 
   useEffect(() => {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
@@ -117,14 +116,10 @@ export default function Game() {
             </div>
 
             <p className="text-gray-600 text-sm mt-6">
-              {countdown} saniye sonra lobiye dönülüyor...
+              {countdown > 0
+                ? `${countdown} saniye sonra lobiye dönülüyor...`
+                : 'Lobi yükleniyor...'}
             </p>
-            <button
-              className="mt-3 text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
-              onClick={() => navigate('/lobby')}
-            >
-              Hemen lobiye dön
-            </button>
           </div>
         </div>
       )}

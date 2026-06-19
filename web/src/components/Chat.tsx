@@ -21,11 +21,6 @@ function canSendPublic(phase: PhaseType, isAlive: boolean): boolean {
   return phase === 'day' || phase === 'hunter-revenge' || phase === 'game-over';
 }
 
-function morningMessage(phase: PhaseType): string | null {
-  if (phase === 'morning') return '🌅 Sabah duyurusu — oylama başlamadan önce oku...';
-  return null;
-}
-
 function canSendVampire(phase: PhaseType, myRole: RoleType | null, isAlive: boolean): boolean {
   return isAlive && myRole === 'vampire' && phase === 'night';
 }
@@ -153,10 +148,6 @@ export default function Chat({ messages, phase, myRole, isAlive, myId }: Props) 
         {!isAlive ? (
           <p className="text-center text-sm text-gray-500" style={{ fontFamily: 'system-ui, sans-serif' }}>
             💀 Öldün — artık konuşamazsın
-          </p>
-        ) : morningMessage(phase) ? (
-          <p className="text-center text-sm text-orange-400" style={{ fontFamily: 'system-ui, sans-serif' }}>
-            {morningMessage(phase)}
           </p>
         ) : !canSend ? (
           <p className="text-center text-sm text-gray-500" style={{ fontFamily: 'system-ui, sans-serif' }}>

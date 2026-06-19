@@ -1,6 +1,6 @@
 export type RoleType = 'villager' | 'vampire' | 'doctor' | 'seer' | 'hunter';
 export type TeamType = 'village' | 'vampire';
-export type PhaseType = 'lobby' | 'morning' | 'day' | 'night' | 'hunter-revenge' | 'game-over';
+export type PhaseType = 'lobby' | 'day' | 'night' | 'hunter-revenge' | 'game-over';
 export type ChatChannel = 'public' | 'vampire' | 'system';
 
 export interface Player {

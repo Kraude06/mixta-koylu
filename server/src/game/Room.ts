@@ -160,20 +160,8 @@ export class Room {
     });
 
     this.addSystemMessage('Oyun başladı! Roller dağıtıldı...');
-    this.startMorning(true);
+    this.startDay();
     return null;
-  }
-
-  private startMorning(isFirst = false): void {
-    this.phase = 'morning';
-    this.phaseEndTime = Date.now() + 10000;
-    if (isFirst) {
-      this.addSystemMessage('🌅 İlk sabah — Rolünü kontrol et, köyü tanı. Oylama 10 saniye sonra başlıyor...');
-    } else {
-      this.addSystemMessage('🌅 Sabah oldu — Gece yaşananlar ortaya çıktı. Oylama 10 saniye sonra başlıyor...');
-    }
-    this.broadcast('game:phase', this.phase, this.dayNumber, this.phaseEndTime);
-    this.schedulePhaseEnd(10000, () => this.startDay());
   }
 
   private startDay(): void {
@@ -237,6 +225,9 @@ export class Room {
 
     const eliminatedId = sorted[0][0];
     this.eliminatePlayer(eliminatedId, 'voted');
+    if (!this.hunterPending) {
+      this.checkWin() || this.startNight();
+    }
   }
 
   submitNightAction(playerId: string, targetId: string): string | null {
@@ -310,7 +301,7 @@ export class Room {
 
     if (!this.checkWin()) {
       if (!this.hunterPending) {
-        this.startMorning(false);
+        this.startDay();
       }
     }
   }
@@ -348,7 +339,7 @@ export class Room {
         this.hunterPending = undefined;
         if (!this.checkWin()) {
           if (reason === 'voted') this.startNight();
-          else this.startMorning(false);
+          else this.startDay();
         }
       });
     }
@@ -366,7 +357,7 @@ export class Room {
 
     if (!this.checkWin()) {
       if (wasVotedOut) this.startNight();
-      else this.startMorning(false);
+      else this.startDay();
     }
     return null;
   }
