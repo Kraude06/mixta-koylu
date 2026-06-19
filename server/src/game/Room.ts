@@ -378,7 +378,7 @@ export class Room {
         ? `🩸 ${player.name} bu gece vampirlerin kurbanı oldu. Rolü: ${player.role}`
         : `🏹 ${player.name} avcı tarafından vuruldu. Rolü: ${player.role}`;
     this.addSystemMessage(msg);
-    this.broadcast('game:eliminated', playerId, player.role!, reason);
+    this.broadcast('game:eliminated', playerId, player.role!, reason, this.notes[playerId] ?? '');
 
     if (player.role === 'hunter' && reason !== 'hunter') {
       this.hunterPending = playerId;
@@ -433,9 +433,8 @@ export class Room {
     this.phase = 'game-over';
     this.winner = winner;
     this.clearPhaseTimer();
-    Object.values(this.players).forEach(p => {
-      this.broadcast('game:eliminated', p.id, p.role!, 'voted');
-    });
+    // Tüm oyuncuları öldür — game:state ile roller açığa çıkar (game:eliminated döngüsü yok = ölüm animasyonu spam olmaz)
+    Object.values(this.players).forEach(p => { p.isAlive = false; });
     this.addSystemMessage(`🎮 Oyun bitti! ${reason}`);
     this.broadcast('game:over', winner, reason);
     this.broadcast('game:state', this.getPublicState());

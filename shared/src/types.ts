@@ -125,7 +125,7 @@ export interface ServerToClientEvents {
   'game:started': (state: PersonalGameState) => void;
   'game:state': (state: PublicGameState) => void;
   'game:phase': (phase: PhaseType, dayNumber: number, endTime: number, accusedPlayerId?: string) => void;
-  'game:eliminated': (playerId: string, role: RoleType, reason: 'voted' | 'killed' | 'hunter') => void;
+  'game:eliminated': (playerId: string, role: RoleType, reason: 'voted' | 'killed' | 'hunter', notes: string) => void;
   'game:night-result': (survived: string[], killed: string[]) => void;
   'game:over': (winner: TeamType, reason: string) => void;
   'game:hunter-triggered': (hunterId: string) => void;

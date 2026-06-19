@@ -137,7 +137,7 @@ export default function Game() {
 
   useEffect(() => {
     if (!deathEvent) return;
-    setDeathDismissIn(7);
+    setDeathDismissIn(10);
     const interval = setInterval(() => {
       setDeathDismissIn((c) => {
         if (c <= 1) { clearInterval(interval); clearDeathEvent(); return 0; }
@@ -189,11 +189,12 @@ export default function Game() {
 
   const roleInfo = myRole ? ROLE_INFO[myRole] : null;
 
-  const deathReasonText = deathEvent?.reason === 'voted'
-    ? 'Köy seni suçlu buldu ve idam etti.'
-    : deathEvent?.reason === 'killed'
-      ? 'Vampirler bu gece seni kurban seçti.'
-      : 'Avcı son nefesinde seni yanına götürdü.';
+  const deathReasonText = !deathEvent ? '' :
+    deathEvent.reason === 'voted'
+      ? (deathEvent.isMe ? 'Köy seni suçlu buldu ve idam etti.' : 'Köy kararını verdi — idam edildi.')
+      : deathEvent.reason === 'killed'
+        ? (deathEvent.isMe ? 'Vampirler bu gece seni kurban seçti.' : 'Bu gece vampirlerin kurbanı oldu.')
+        : (deathEvent.isMe ? 'Avcı son nefesinde seni yanına götürdü.' : 'Avcı son nefesinde yanına götürdü.');
 
   const NIGHT_STARS_ANIM = [
     { x: 8,  y: 10, size: 3,   delay: 0.08 },
@@ -340,64 +341,83 @@ export default function Game() {
         </div>
       )}
 
-      {/* Death overlay */}
+      {/* Death overlay — tüm oyunculara gösterilir */}
       {deathEvent && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ animation: 'deathIn 0.4s ease-out forwards' }}>
-          <div className="absolute inset-0 bg-black/92 backdrop-blur-md" />
+        <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ animation: 'deathIn 0.35s ease-out forwards' }}>
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-lg" />
 
-          {/* Kan damlaları */}
-          <div className="absolute top-0 left-0 right-0 pointer-events-none">
-            {DRIPS.map((d, i) => (
-              <div
-                key={i}
-                className="absolute top-0 rounded-b-full"
-                style={{
-                  left: `${d.left}%`,
-                  width: 10,
-                  height: d.h,
-                  background: 'linear-gradient(to bottom, #7f1d1d, #991b1b)',
-                  animation: `dripDown 0.6s ${d.d}s cubic-bezier(0.4,0,0.2,1) both`,
-                }}
-              />
-            ))}
-          </div>
+          {/* Kan damlaları — sadece kendi ölümünde */}
+          {deathEvent.isMe && (
+            <div className="absolute top-0 left-0 right-0 pointer-events-none">
+              {DRIPS.map((d, i) => (
+                <div
+                  key={i}
+                  className="absolute top-0 rounded-b-full"
+                  style={{
+                    left: `${d.left}%`,
+                    width: 10,
+                    height: d.h,
+                    background: 'linear-gradient(to bottom, #7f1d1d, #991b1b)',
+                    animation: `dripDown 0.6s ${d.d}s cubic-bezier(0.4,0,0.2,1) both`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
-          <div className="relative z-10 text-center px-6 max-w-sm w-full">
-            {/* Kafatası */}
-            <div style={{ animation: 'skullIn 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both', fontSize: 96 }}>
-              💀
+          <div className="relative z-10 text-center px-5 max-w-xs w-full overflow-y-auto max-h-screen py-4">
+            {/* İkon */}
+            <div style={{ animation: 'skullIn 0.5s 0.15s cubic-bezier(0.34,1.56,0.64,1) both', fontSize: deathEvent.isMe ? 88 : 72, lineHeight: 1 }}>
+              {deathEvent.isMe ? '💀' : (ROLE_INFO[deathEvent.role]?.icon ?? '☠️')}
             </div>
 
             {/* Başlık */}
             <h1
-              className="text-5xl font-black text-blood-400 mt-2 mb-1 tracking-tight"
-              style={{ animation: 'fadeUp 0.4s 0.5s ease-out both', textShadow: '0 0 30px #991b1b' }}
+              className={`font-black mt-2 mb-1 tracking-tight ${deathEvent.isMe ? 'text-4xl text-blood-400' : 'text-3xl text-white'}`}
+              style={{ animation: 'fadeUp 0.4s 0.4s ease-out both', textShadow: deathEvent.isMe ? '0 0 30px #991b1b' : '0 0 20px rgba(255,255,255,0.2)' }}
             >
-              Sen Öldün!
+              {deathEvent.isMe ? 'Sen Öldün!' : `${deathEvent.playerName} Öldü!`}
             </h1>
 
             {/* Sebep */}
             <p
-              className="text-gray-400 text-base mb-6"
-              style={{ animation: 'fadeUp 0.4s 0.65s ease-out both' }}
+              className="text-gray-400 text-sm mb-4"
+              style={{ animation: 'fadeUp 0.4s 0.55s ease-out both' }}
             >
               {deathReasonText}
             </p>
 
             {/* Rol kartı */}
             <div
-              className="mb-6 bg-night-900/80 border border-white/10 rounded-2xl p-4"
-              style={{ animation: 'fadeUp 0.4s 0.75s ease-out both' }}
+              className="mb-3 bg-night-900/80 border border-white/10 rounded-2xl p-3"
+              style={{ animation: 'fadeUp 0.4s 0.65s ease-out both' }}
             >
-              <p className="text-xs text-gray-500 mb-2 uppercase tracking-widest">Rolün</p>
+              <p className="text-xs text-gray-500 mb-2 uppercase tracking-widest">
+                {deathEvent.isMe ? 'Rolün' : `${deathEvent.playerName}'in Rolü`}
+              </p>
               <RoleCard role={deathEvent.role} expanded />
             </div>
+
+            {/* Notlar — varsa göster */}
+            {deathEvent.notes.trim() && (
+              <div
+                className="mb-3 bg-night-900/80 border border-white/10 rounded-2xl p-3 text-left"
+                style={{ animation: 'fadeUp 0.4s 0.78s ease-out both' }}
+              >
+                <p className="text-xs text-gray-500 mb-1 uppercase tracking-widest">
+                  📝 {deathEvent.isMe ? 'Notların' : `${deathEvent.playerName}'in Notları`}
+                </p>
+                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-5 leading-relaxed">
+                  {deathEvent.notes}
+                </p>
+              </div>
+            )}
 
             {/* Buton */}
             <button
               onClick={clearDeathEvent}
               className="btn-primary w-full py-3 text-base"
-              style={{ animation: 'fadeUp 0.4s 0.9s ease-out both' }}
+              style={{ animation: 'fadeUp 0.4s 0.88s ease-out both' }}
             >
               Anladım ({deathDismissIn}s)
             </button>
@@ -406,8 +426,8 @@ export default function Game() {
           <style>{`
             @keyframes deathIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes dripDown { from { transform: scaleY(0); transform-origin: top; opacity: 0; } to { transform: scaleY(1); transform-origin: top; opacity: 1; } }
-            @keyframes skullIn { from { opacity: 0; transform: scale(0.3) translateY(-40px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-            @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes skullIn { from { opacity: 0; transform: scale(0.3) translateY(-30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+            @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
           `}</style>
         </div>
       )}
@@ -536,9 +556,11 @@ export default function Game() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0 relative overflow-hidden">
 
-        {/* Arka plan sahne (filigran) */}
+        {/* Arka plan sahne */}
         <SkyScene phase={phase} />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(3,0,14,0.72)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(to bottom, rgba(2,0,12,0.78) 0%, rgba(2,0,12,0.42) 25%, rgba(2,0,12,0.38) 72%, rgba(2,0,12,0.82) 100%)',
+        }} />
 
         {/* Sidebar - Players (desktop) */}
         <div className="hidden md:flex flex-col w-56 border-r border-white/10 overflow-y-auto shrink-0 relative z-10"

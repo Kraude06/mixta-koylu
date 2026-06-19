@@ -27,7 +27,7 @@ interface GameStore {
   myNotes: string;
   error: string | null;
   isConnected: boolean;
-  deathEvent: { role: RoleType; reason: 'voted' | 'killed' | 'hunter' } | null;
+  deathEvent: { playerId: string; playerName: string; role: RoleType; reason: 'voted' | 'killed' | 'hunter'; notes: string; isMe: boolean } | null;
 
   setMyId: (id: string) => void;
   setMyName: (name: string) => void;
@@ -139,8 +139,9 @@ socket.on('verdict:update', (votes) => {
   useGameStore.setState({ verdictVotes: votes });
 });
 
-socket.on('game:eliminated', (playerId, role, reason) => {
-  const myId = useGameStore.getState().myId;
+socket.on('game:eliminated', (playerId, role, reason, notes) => {
+  const { myId, players } = useGameStore.getState();
+  const playerName = players[playerId]?.name ?? '?';
   useGameStore.setState((prev) => ({
     players: {
       ...prev.players,
@@ -149,7 +150,7 @@ socket.on('game:eliminated', (playerId, role, reason) => {
         : prev.players[playerId],
     },
     eliminatedPlayerId: playerId,
-    deathEvent: playerId === myId ? { role, reason } : prev.deathEvent,
+    deathEvent: { playerId, playerName, role, reason, notes: notes ?? '', isMe: playerId === myId },
   }));
 });
 
