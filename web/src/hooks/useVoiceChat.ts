@@ -6,6 +6,16 @@ const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    // TURN relay — farklı ağlardaki cihazlar için zorunlu (NAT traversal)
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
 };
 
@@ -20,6 +30,7 @@ export interface VoiceChatState {
   micError: string | null;
   voicePeers: Set<string>;
   toggleMute: () => void;
+  iceError: boolean;
 }
 
 function makeAudio(muted: boolean): HTMLAudioElement {
@@ -45,6 +56,7 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
   const [voiceActive, setVoiceActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
+  const [iceError, setIceError] = useState(false);
   const [voicePeers, setVoicePeers] = useState<Set<string>>(new Set());
 
   useEffect(() => { permittedRef.current = permittedPeers; }, [permittedPeers]);
@@ -101,8 +113,24 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
 
     pc.onconnectionstatechange = () => {
       console.log(`[voice] ${peerId} → ${pc.connectionState}`);
-      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+      if (pc.connectionState === 'failed') {
+        console.warn('[voice] bağlantı başarısız, ICE restart deneniyor...');
+        pc.restartIce();
+      }
+      if (pc.connectionState === 'closed') {
         closePeer(peerId);
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[voice] ICE durumu: ${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === 'failed') {
+        console.warn('[voice] ICE başarısız — TURN sunucusuna ulaşılamıyor olabilir');
+        setIceError(true);
+        pc.restartIce();
+      }
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        setIceError(false);
       }
     };
 
@@ -193,6 +221,7 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
       setVoiceActive(false);
       setIsMuted(false);
       setVoicePeers(new Set());
+      setIceError(false);
       return;
     }
 
@@ -233,5 +262,5 @@ export function useVoiceChat(enabled: boolean, permittedPeers: Set<string>): Voi
     });
   }, []);
 
-  return { voiceActive, isMuted, micError, voicePeers, toggleMute };
+  return { voiceActive, isMuted, micError, voicePeers, toggleMute, iceError };
 }

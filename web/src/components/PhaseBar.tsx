@@ -11,6 +11,7 @@ interface Props {
   voiceActive: boolean;
   isMicMuted: boolean;
   micError: string | null;
+  iceError: boolean;
   onToggleVoice: () => void;
   onToggleMic: () => void;
 }
@@ -28,7 +29,7 @@ const phaseConfig: Record<PhaseType, { label: string; icon: string; color: strin
 export default function PhaseBar({
   phase, dayNumber, phaseEndTime,
   soundEnabled, onToggleSound,
-  voiceEnabled, voiceActive, isMicMuted, micError, onToggleVoice, onToggleMic,
+  voiceEnabled, voiceActive, isMicMuted, micError, iceError, onToggleVoice, onToggleMic,
 }: Props) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const config = phaseConfig[phase] ?? phaseConfig.lobby;
@@ -74,23 +75,29 @@ export default function PhaseBar({
         <button
           onClick={onToggleVoice}
           className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-semibold transition-all"
-          title={micError ?? (voiceActive ? 'Sesli sohbeti kapat' : voiceEnabled ? 'Bağlanıyor...' : 'Sesli sohbet aç')}
+          title={
+            micError ?? (iceError
+              ? 'Bağlantı kurulamadı — ağ engelliyor olabilir'
+              : voiceActive ? 'Sesli sohbeti kapat'
+              : voiceEnabled ? 'Bağlanıyor...'
+              : 'Sesli sohbet aç')
+          }
           style={{
-            background: micError
+            background: micError || iceError
               ? 'rgba(239,68,68,0.2)'
               : voiceActive
                 ? 'rgba(74,222,128,0.15)'
                 : 'rgba(255,255,255,0.08)',
-            border: micError
+            border: micError || iceError
               ? '1px solid rgba(239,68,68,0.5)'
               : voiceActive
                 ? '1px solid rgba(74,222,128,0.4)'
                 : '1px solid rgba(255,255,255,0.12)',
-            color: micError ? '#f87171' : voiceActive ? '#4ade80' : '#9ca3af',
+            color: micError || iceError ? '#f87171' : voiceActive ? '#4ade80' : '#9ca3af',
           }}
         >
-          <span>{micError ? '⚠️' : '🎤'}</span>
-          <span>{micError ? 'Hata' : voiceActive ? 'Ses Açık' : voiceEnabled ? '...' : 'Ses'}</span>
+          <span>{micError || iceError ? '⚠️' : '🎤'}</span>
+          <span>{micError ? 'Hata' : iceError ? 'Bağlanamadı' : voiceActive ? 'Ses Açık' : voiceEnabled ? '...' : 'Ses'}</span>
         </button>
 
         {/* Mikrofon sustur */}

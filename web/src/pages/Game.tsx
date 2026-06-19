@@ -56,7 +56,7 @@ export default function Game() {
     return new Set(allIds.filter(id => players[id]?.isAlive));
   }, [phase, players, myId, myRole]);
 
-  const { voiceActive, isMuted, micError, voicePeers, toggleMute } =
+  const { voiceActive, isMuted, micError, voicePeers, toggleMute, iceError } =
     useVoiceChat(voiceEnabled, permittedPeers);
 
   // Kimin sesli sohbette olduğu (kendimiz dahil)
@@ -222,6 +222,7 @@ export default function Game() {
         voiceActive={voiceActive}
         isMicMuted={isMuted}
         micError={micError}
+        iceError={iceError}
         onToggleVoice={() => setVoiceEnabled(v => !v)}
         onToggleMic={toggleMute}
       />
