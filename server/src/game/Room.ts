@@ -147,7 +147,9 @@ export class Room {
   }
 
   startGame(hostId: string, partialSettings: Partial<GameSettings>): string | null {
-    if (!this.players[hostId]?.isHost) return 'Sadece oda sahibi oyunu başlatabilir.';
+    const hostPlayer = this.players[hostId];
+    console.log(`[startGame] hostId=${hostId} isHost=${hostPlayer?.isHost} phase=${this.phase} playerCount=${this.getPlayerCount()}`);
+    if (!hostPlayer?.isHost) return 'Sadece oda sahibi oyunu başlatabilir.';
     if (this.phase !== 'lobby') return 'Oyun zaten başladı.';
     const count = this.getPlayerCount();
     if (count < 4) return 'En az 4 oyuncu gerekli.';
@@ -177,6 +179,7 @@ export class Room {
     const alivePlayers = Object.values(this.players).filter(p => p.isAlive);
     alivePlayers.forEach(p => { p.vote = undefined; });
     this.phaseEndTime = Date.now() + this.settings.dayDuration * 1000;
+    console.log(`[startDay] dayDuration=${this.settings.dayDuration}s → resolveVote ${new Date(this.phaseEndTime).toISOString()}'de tetiklenecek`);
     this.addSystemMessage(`☀️ Gündüz ${this.dayNumber} — Köy meydanında toplanın ve vampirleri bulun!`);
     this.broadcast('game:phase', this.phase, this.dayNumber, this.phaseEndTime);
     this.schedulePhaseEnd(this.settings.dayDuration * 1000, () => this.resolveVote());
@@ -212,6 +215,7 @@ export class Room {
 
   private resolveVote(): void {
     if (this.phase !== 'day') return;
+    console.log(`[resolveVote] ${new Date().toISOString()}'de tetiklendi`);
     const tally: Record<string, number> = {};
     Object.values(this.players)
       .filter(p => p.isAlive && p.vote)
@@ -460,6 +464,13 @@ export class Room {
       p.vote = undefined;
       p.nightActionDone = false;
     });
+
+    // Hiç host kalmadıysa (oyun sırasında ayrıldıysa) ilk oyuncuyu host yap
+    const remaining = Object.values(this.players);
+    if (remaining.length > 0 && !remaining.some(p => p.isHost)) {
+      remaining[0].isHost = true;
+    }
+    console.log(`[resetToLobby] ${remaining.length} oyuncu, host=${remaining.find(p => p.isHost)?.name ?? 'YOK'}`);
 
     const msg: Message = {
       id: uuidv4(),
