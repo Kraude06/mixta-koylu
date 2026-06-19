@@ -300,5 +300,5 @@ app.get('/health', (_, res) => res.json({ ok: true, rooms: rooms.size }));
 
 const PORT = process.env.PORT ?? 3001;
 httpServer.listen(PORT, () => {
-  console.log(`🧛 Vampir Köylü sunucusu çalışıyor: http://localhost:${PORT}`);
+  console.log(`🧛 Vampir Köylü sunucusu çalışıyor: http://localhost:${PORT} [build: ${new Date().toISOString()}]`);
 });

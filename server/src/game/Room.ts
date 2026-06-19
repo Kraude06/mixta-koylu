@@ -203,6 +203,10 @@ export class Room {
     const votes: Record<string, string | undefined> = {};
     Object.values(this.players).forEach(p => { votes[p.id] = p.vote; });
     this.broadcast('vote:update', votes);
+
+    const alive = Object.values(this.players).filter(p => p.isAlive);
+    const voted = alive.filter(p => p.vote).length;
+    console.log(`[castVote] ${voted}/${alive.length} oy kullandı — timer devam ediyor`);
     return null;
   }
 
