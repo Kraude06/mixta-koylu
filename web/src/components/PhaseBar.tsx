@@ -7,6 +7,12 @@ interface Props {
   phaseEndTime: number | null;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  voiceEnabled: boolean;
+  voiceActive: boolean;
+  isMicMuted: boolean;
+  micError: string | null;
+  onToggleVoice: () => void;
+  onToggleMic: () => void;
 }
 
 const phaseConfig: Record<PhaseType, { label: string; icon: string; color: string }> = {
@@ -19,7 +25,11 @@ const phaseConfig: Record<PhaseType, { label: string; icon: string; color: strin
   'game-over': { label: 'Oyun Bitti', icon: '🎮', color: 'text-blood-400' },
 };
 
-export default function PhaseBar({ phase, dayNumber, phaseEndTime, soundEnabled, onToggleSound }: Props) {
+export default function PhaseBar({
+  phase, dayNumber, phaseEndTime,
+  soundEnabled, onToggleSound,
+  voiceEnabled, voiceActive, isMicMuted, micError, onToggleVoice, onToggleMic,
+}: Props) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const config = phaseConfig[phase] ?? phaseConfig.lobby;
 
@@ -51,6 +61,7 @@ export default function PhaseBar({ phase, dayNumber, phaseEndTime, soundEnabled,
             {Math.floor(remaining / 60).toString().padStart(2, '0')}:{(remaining % 60).toString().padStart(2, '0')}
           </div>
         )}
+        {/* Ses efektleri */}
         <button
           onClick={onToggleSound}
           className="text-lg opacity-60 hover:opacity-100 transition-opacity"
@@ -58,6 +69,32 @@ export default function PhaseBar({ phase, dayNumber, phaseEndTime, soundEnabled,
         >
           {soundEnabled ? '🔊' : '🔇'}
         </button>
+
+        {/* Sesli sohbet — aç/kapat */}
+        <button
+          onClick={onToggleVoice}
+          className={`text-lg transition-opacity ${
+            micError ? 'opacity-100' :
+            voiceActive ? 'opacity-100' :
+            voiceEnabled ? 'opacity-70 animate-pulse' :
+            'opacity-40 hover:opacity-70'
+          }`}
+          title={micError ?? (voiceActive ? 'Sesli sohbeti kapat' : voiceEnabled ? 'Bağlanıyor...' : 'Sesli sohbet')}
+          style={{ color: micError ? '#f87171' : voiceActive ? '#4ade80' : undefined }}
+        >
+          🎤
+        </button>
+
+        {/* Mikrofon sustur */}
+        {voiceActive && (
+          <button
+            onClick={onToggleMic}
+            className={`text-lg transition-opacity ${isMicMuted ? 'opacity-50' : 'opacity-100'}`}
+            title={isMicMuted ? 'Mikrofon aç' : 'Mikrofonu kapat'}
+          >
+            {isMicMuted ? '🔕' : '🎙️'}
+          </button>
+        )}
       </div>
     </div>
   );

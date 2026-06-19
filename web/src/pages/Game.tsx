@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROLE_INFO, PhaseType } from '@vampir-koylu/shared';
 import { socket } from '../socket';
@@ -13,6 +13,7 @@ import {
   initAudio, playDay, playNight, playTrial, playVerdict,
   playDeath, playGameOver, playVoteCast, playHunterRevenge,
 } from '../utils/sounds';
+import { useVoiceChat } from '../hooks/useVoiceChat';
 
 type Panel = 'players' | 'chat' | 'notes';
 
@@ -32,7 +33,38 @@ export default function Game() {
   const [deathDismissIn, setDeathDismissIn] = useState(7);
   const [announcement, setAnnouncement] = useState<PhaseType | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const prevPhaseRef = useRef<PhaseType>('lobby');
+
+  // Faz ve role göre kimin sesini duymaya izin var
+  const permittedPeers = useMemo(() => {
+    const isAliveMe = myId ? (players[myId]?.isAlive ?? false) : false;
+    const allIds = Object.keys(players);
+    if (phase === 'lobby' || phase === 'game-over') return new Set(allIds);
+    if (!isAliveMe) {
+      // Ölü oyuncular diğer ölüleri duyar
+      return new Set(allIds.filter(id => !players[id]?.isAlive));
+    }
+    if (phase === 'night' || phase === 'hunter-revenge') {
+      if (myRole === 'vampire') {
+        // Vampirler sadece takım arkadaşlarını duyar (roller getPersonalPlayers ile görünür)
+        return new Set(allIds.filter(id => players[id]?.team === 'vampire'));
+      }
+      return new Set<string>(); // Köylüler gece sessize alınır
+    }
+    // Gündüz / yargılama: hayatta olan herkes
+    return new Set(allIds.filter(id => players[id]?.isAlive));
+  }, [phase, players, myId, myRole]);
+
+  const { voiceActive, isMuted, micError, voicePeers, toggleMute } =
+    useVoiceChat(voiceEnabled, permittedPeers);
+
+  // Kimin sesli sohbette olduğu (kendimiz dahil)
+  const allVoicePeers = useMemo(() => {
+    const s = new Set(voicePeers);
+    if (voiceActive && myId) s.add(myId);
+    return s;
+  }, [voicePeers, voiceActive, myId]);
 
   const me = myId ? players[myId] : undefined;
   const isAlive = me?.isAlive ?? false;
@@ -184,6 +216,12 @@ export default function Game() {
         phaseEndTime={phaseEndTime}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(v => !v)}
+        voiceEnabled={voiceEnabled}
+        voiceActive={voiceActive}
+        isMicMuted={isMuted}
+        micError={micError}
+        onToggleVoice={() => setVoiceEnabled(v => !v)}
+        onToggleMic={toggleMute}
       />
 
       {/* Faz duyurusu */}
@@ -422,19 +460,27 @@ export default function Game() {
           </div>
           <div className="p-2 space-y-2 overflow-y-auto">
             {playerList.map((p) => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                myId={myId!}
-                myTeam={myTeam}
-                phase={phase}
-                votes={votes}
-                myVote={myVote}
-                seerResult={p.id !== myId ? seerResults[p.id] : undefined}
-                onVote={showVoting ? handleVote : undefined}
-                onNightAction={showNightActions ? handleNightAction : undefined}
-                isNightActionTarget={nightTarget === p.id}
-              />
+              <div key={p.id} className="relative">
+                <PlayerCard
+                  player={p}
+                  myId={myId!}
+                  myTeam={myTeam}
+                  phase={phase}
+                  votes={votes}
+                  myVote={myVote}
+                  seerResult={p.id !== myId ? seerResults[p.id] : undefined}
+                  onVote={showVoting ? handleVote : undefined}
+                  onNightAction={showNightActions ? handleNightAction : undefined}
+                  isNightActionTarget={nightTarget === p.id}
+                />
+                {allVoicePeers.has(p.id) && (
+                  <span
+                    className="absolute top-1 right-1 text-xs"
+                    title="Sesli sohbette"
+                    style={{ color: '#4ade80', fontSize: 11 }}
+                  >🎤</span>
+                )}
+              </div>
             ))}
             {showHunterRevenge && (
               <div className="mt-2 space-y-2">
@@ -471,19 +517,27 @@ export default function Game() {
           {/* Mobile: players panel */}
           <div className={`md:hidden flex-1 overflow-y-auto p-2 space-y-2 ${activePanel !== 'players' ? 'hidden' : ''}`}>
             {playerList.map((p) => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                myId={myId!}
-                myTeam={myTeam}
-                phase={phase}
-                votes={votes}
-                myVote={myVote}
-                seerResult={p.id !== myId ? seerResults[p.id] : undefined}
-                onVote={showVoting ? handleVote : undefined}
-                onNightAction={showNightActions ? handleNightAction : undefined}
-                isNightActionTarget={nightTarget === p.id}
-              />
+              <div key={p.id} className="relative">
+                <PlayerCard
+                  player={p}
+                  myId={myId!}
+                  myTeam={myTeam}
+                  phase={phase}
+                  votes={votes}
+                  myVote={myVote}
+                  seerResult={p.id !== myId ? seerResults[p.id] : undefined}
+                  onVote={showVoting ? handleVote : undefined}
+                  onNightAction={showNightActions ? handleNightAction : undefined}
+                  isNightActionTarget={nightTarget === p.id}
+                />
+                {allVoicePeers.has(p.id) && (
+                  <span
+                    className="absolute top-1 right-1 text-xs"
+                    title="Sesli sohbette"
+                    style={{ color: '#4ade80', fontSize: 11 }}
+                  >🎤</span>
+                )}
+              </div>
             ))}
             {showHunterRevenge && playerList.filter(p => p.isAlive && p.id !== myId).map((p) => (
               <button key={p.id} onClick={() => handleHunterShot(p.id)}

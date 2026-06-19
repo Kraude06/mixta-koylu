@@ -107,6 +107,18 @@ export const ROLE_INFO: Record<RoleType, RoleInfo> = {
   },
 };
 
+export interface VoiceSDP {
+  type: string;
+  sdp?: string;
+}
+
+export interface VoiceICE {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+}
+
 export interface ServerToClientEvents {
   'room:joined': (state: PersonalGameState, settings: GameSettings) => void;
   'room:player-list': (players: Record<string, Player>) => void;
@@ -122,6 +134,11 @@ export interface ServerToClientEvents {
   'verdict:update': (votes: Record<string, 'guilty' | 'innocent' | undefined>) => void;
   'seer:result': (targetId: string, team: TeamType) => void;
   'error': (message: string) => void;
+  'voice:peer-ready': (peerId: string) => void;
+  'voice:peer-left': (peerId: string) => void;
+  'voice:offer': (from: string, sdp: VoiceSDP) => void;
+  'voice:answer': (from: string, sdp: VoiceSDP) => void;
+  'voice:ice': (from: string, candidate: VoiceICE) => void;
 }
 
 export interface ClientToServerEvents {
@@ -135,4 +152,9 @@ export interface ClientToServerEvents {
   'chat:send': (content: string, channel: ChatChannel) => void;
   'notes:update': (notes: string) => void;
   'notes:read': (playerId: string, cb: (notes: string) => void) => void;
+  'voice:ready': (cb: (existingPeers: string[]) => void) => void;
+  'voice:leave': () => void;
+  'voice:offer': (to: string, sdp: VoiceSDP) => void;
+  'voice:answer': (to: string, sdp: VoiceSDP) => void;
+  'voice:ice': (to: string, candidate: VoiceICE) => void;
 }

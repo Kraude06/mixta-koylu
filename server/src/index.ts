@@ -18,6 +18,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 const rooms = new Map<string, Room>();
 const socketToRoom = new Map<string, string>();
 const socketToPlayer = new Map<string, string>();
+const voiceSockets = new Set<string>();
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -32,13 +33,15 @@ function getRoom(socketId: string): Room | undefined {
 }
 
 function broadcastToRoom(room: Room, event: string, args: unknown[]): void {
-  io.to(room.code).emit(event as keyof ServerToClientEvents, ...(args as []));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (io.to(room.code) as any).emit(event, ...args);
 }
 
 function sendToPlayer(room: Room, playerId: string, event: string, args: unknown[]): void {
   for (const [sid, pid] of socketToPlayer.entries()) {
     if (pid === playerId && socketToRoom.get(sid) === room.code) {
-      io.to(sid).emit(event as keyof ServerToClientEvents, ...(args as []));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (io.to(sid) as any).emit(event, ...args);
       break;
     }
   }
@@ -205,9 +208,77 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     cb(room.getNotes(targetPlayerId));
   });
 
+  // ── Voice signaling ──────────────────────────────────────────────────────────
+
+  socket.on('voice:ready', (cb) => {
+    voiceSockets.add(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    const roomCode = socketToRoom.get(socket.id);
+    if (!playerId || !roomCode) { cb([]); return; }
+
+    const existingPeers: string[] = [];
+    for (const [sid, pid] of socketToPlayer.entries()) {
+      if (sid !== socket.id && socketToRoom.get(sid) === roomCode && voiceSockets.has(sid)) {
+        existingPeers.push(pid);
+        io.to(sid).emit('voice:peer-ready', playerId);
+      }
+    }
+    cb(existingPeers);
+  });
+
+  socket.on('voice:leave', () => {
+    if (!voiceSockets.has(socket.id)) return;
+    voiceSockets.delete(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    const roomCode = socketToRoom.get(socket.id);
+    if (playerId && roomCode) io.to(roomCode).emit('voice:peer-left', playerId);
+  });
+
+  socket.on('voice:offer', (to, sdp) => {
+    const from = socketToPlayer.get(socket.id);
+    const roomCode = socketToRoom.get(socket.id);
+    if (!from || !roomCode) return;
+    for (const [sid, pid] of socketToPlayer.entries()) {
+      if (pid === to && socketToRoom.get(sid) === roomCode) {
+        io.to(sid).emit('voice:offer', from, sdp);
+        break;
+      }
+    }
+  });
+
+  socket.on('voice:answer', (to, sdp) => {
+    const from = socketToPlayer.get(socket.id);
+    const roomCode = socketToRoom.get(socket.id);
+    if (!from || !roomCode) return;
+    for (const [sid, pid] of socketToPlayer.entries()) {
+      if (pid === to && socketToRoom.get(sid) === roomCode) {
+        io.to(sid).emit('voice:answer', from, sdp);
+        break;
+      }
+    }
+  });
+
+  socket.on('voice:ice', (to, candidate) => {
+    const from = socketToPlayer.get(socket.id);
+    const roomCode = socketToRoom.get(socket.id);
+    if (!from || !roomCode) return;
+    for (const [sid, pid] of socketToPlayer.entries()) {
+      if (pid === to && socketToRoom.get(sid) === roomCode) {
+        io.to(sid).emit('voice:ice', from, candidate);
+        break;
+      }
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   socket.on('disconnect', () => {
     const room = getRoom(socket.id);
     const playerId = socketToPlayer.get(socket.id);
+    if (voiceSockets.has(socket.id)) {
+      voiceSockets.delete(socket.id);
+      if (playerId && room) io.to(room.code).emit('voice:peer-left', playerId);
+    }
     if (room && playerId) {
       room.removePlayer(playerId);
       io.to(room.code).emit('room:player-list', room.getPublicState().players);
