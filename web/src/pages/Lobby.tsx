@@ -58,43 +58,82 @@ export default function Lobby() {
   const maxVampires = Math.max(1, Math.floor(playerList.length / 3));
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-gothic-950 to-night-950">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-4"
+      style={{ background: 'linear-gradient(to bottom, #06020f 0%, #0e0620 50%, #150830 100%)' }}
+    >
       <div className="w-full max-w-lg space-y-4">
-        <div className="text-center">
-          <div className="text-5xl mb-2">🏰</div>
-          <h1 className="text-3xl font-gothic font-bold text-blood-500">Bekleme Odası</h1>
+
+        {/* Başlık */}
+        <div className="text-center pb-2">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-800 to-blood-600"/>
+            <span className="text-blood-500 text-xl">🦇</span>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blood-800 to-blood-600"/>
+          </div>
+          <h1
+            className="font-gothic font-black text-blood-500 tracking-widest"
+            style={{ fontSize: '1.9rem', textShadow: '0 0 30px rgba(153,27,27,0.6)' }}
+          >
+            Bekleme Odası
+          </h1>
+          <div className="flex items-center justify-center gap-3 mt-2">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-900 to-transparent"/>
+          </div>
         </div>
 
         {/* Oda kodu */}
-        <div className="card">
-          <p className="text-gray-400 text-sm mb-2">Oda Kodu — arkadaşlarınla paylaş</p>
-          <div className="flex items-center gap-3">
-            <span className="text-4xl font-mono font-bold tracking-[0.3em] text-blood-400">
+        <div
+          className="rounded-2xl border border-blood-900/60 p-4"
+          style={{ background: 'rgba(60,0,0,0.25)', backdropFilter: 'blur(8px)' }}
+        >
+          <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">Oda Kodu — arkadaşlarınla paylaş</p>
+          <div className="flex items-center justify-between">
+            <span
+              className="text-4xl font-mono font-black tracking-[0.35em] text-blood-400"
+              style={{ textShadow: '0 0 20px rgba(153,27,27,0.5)' }}
+            >
               {roomCode}
             </span>
-            <button className="btn-ghost text-sm py-1 px-3" onClick={copyCode}>
-              Kopyala
+            <button
+              className="px-4 py-2 rounded-xl border border-white/10 text-gray-400 text-sm
+                hover:border-blood-700 hover:text-blood-400 transition-all"
+              onClick={copyCode}
+            >
+              📋 Kopyala
             </button>
           </div>
         </div>
 
         {/* Oyuncular */}
-        <div className="card">
+        <div className="rounded-2xl border border-white/8 p-4" style={{ background: 'rgba(8,3,20,0.7)' }}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-gray-200">
-              Oyuncular ({playerList.length}/16)
+            <h3 className="text-base font-bold text-gray-200 flex items-center gap-2">
+              <span>👥</span> Oyuncular
+              <span className="text-gray-600 font-normal text-sm">({playerList.length}/16)</span>
             </h3>
-            <span className="text-xs text-gray-500">Min: 4</span>
+            <span className="text-xs text-gray-600 border border-white/8 rounded-full px-2 py-0.5">Min: 4</span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {playerList.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 bg-night-900 rounded-lg px-3 py-2">
-                <div className="w-8 h-8 rounded-full bg-blood-800 flex items-center justify-center text-sm font-bold text-blood-300">
+              <div
+                key={p.id}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)' }}
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                  style={{
+                    background: p.isHost ? 'rgba(153,27,27,0.4)' : 'rgba(255,255,255,0.08)',
+                    color: p.isHost ? '#fca5a5' : '#9ca3af',
+                    border: p.isHost ? '1px solid rgba(153,27,27,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
                   {p.name[0].toUpperCase()}
                 </div>
-                <span className="text-gray-200 flex-1">{p.name}</span>
+                <span className="text-gray-200 flex-1 text-sm">{p.name}</span>
                 {p.isHost && <span className="text-xs text-blood-400 font-semibold">👑 Lider</span>}
-                {p.id === myId && <span className="text-xs text-gray-500">(sen)</span>}
+                {p.id === myId && <span className="text-xs text-gray-600">(sen)</span>}
               </div>
             ))}
           </div>
@@ -102,25 +141,33 @@ export default function Lobby() {
 
         {/* Ayarlar — sadece host */}
         {isHost && (
-          <div className="card space-y-4">
-            <h3 className="text-lg font-semibold text-gray-200">⚙️ Oyun Ayarları</h3>
+          <div
+            className="rounded-2xl border border-white/8 p-4 space-y-5"
+            style={{ background: 'rgba(8,3,20,0.7)' }}
+          >
+            {/* Başlık */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-900 to-transparent"/>
+              <h3 className="text-sm font-bold text-gray-300 tracking-widest uppercase">⚙️ Oyun Ayarları</h3>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blood-900 to-transparent"/>
+            </div>
 
             {/* Vampir sayısı */}
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
-                Vampir Sayısı
-                <span className="text-blood-400 ml-2 font-bold">{localSettings.vampireCount}</span>
-              </label>
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">
+                🩸 Vampir Sayısı
+                <span className="text-blood-400 ml-2 font-bold normal-case tracking-normal">{localSettings.vampireCount}</span>
+              </p>
               <div className="flex gap-2">
                 {Array.from({ length: maxVampires }, (_, i) => i + 1).map((n) => (
                   <button
                     key={n}
                     onClick={() => set('vampireCount', n)}
-                    className={`w-10 h-10 rounded-lg border font-bold transition-all
-                      ${localSettings.vampireCount === n
-                        ? 'bg-blood-700 border-blood-500 text-white'
-                        : 'bg-night-900 border-white/10 text-gray-400 hover:border-blood-700 hover:text-blood-400'
-                      }`}
+                    className="w-10 h-10 rounded-lg border font-bold text-sm transition-all"
+                    style={localSettings.vampireCount === n
+                      ? { background: 'rgba(153,27,27,0.5)', borderColor: 'rgba(153,27,27,0.8)', color: '#fca5a5' }
+                      : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)', color: '#6b7280' }
+                    }
                   >
                     {n}
                   </button>
@@ -128,93 +175,59 @@ export default function Lobby() {
               </div>
             </div>
 
-            {/* Roller */}
+            {/* Özel Roller */}
             <div>
-              <label className="text-sm text-gray-400 block mb-2">Özel Roller</label>
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Özel Roller</p>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   { key: 'includeDoctor', icon: '🩺', label: 'Doktor' },
-                  { key: 'includeSeer', icon: '🔮', label: 'Kahin' },
-                  { key: 'includeHunter', icon: '🏹', label: 'Avcı' },
+                  { key: 'includeSeer',   icon: '🔮', label: 'Kahin'  },
+                  { key: 'includeHunter', icon: '🏹', label: 'Avcı'   },
                 ] as const).map(({ key, icon, label }) => (
                   <button
                     key={key}
                     onClick={() => set(key, !localSettings[key])}
-                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all
-                      ${localSettings[key]
-                        ? 'bg-green-900/30 border-green-700 text-green-300'
-                        : 'bg-night-900 border-white/10 text-gray-600 hover:border-white/20'
-                      }`}
+                    className="flex flex-col items-center gap-1 py-3 rounded-xl border transition-all"
+                    style={localSettings[key]
+                      ? { background: 'rgba(21,128,61,0.15)', borderColor: 'rgba(34,197,94,0.35)', color: '#86efac' }
+                      : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)', color: '#4b5563' }
+                    }
                   >
                     <span className="text-xl">{icon}</span>
                     <span className="text-xs font-semibold">{label}</span>
-                    <span className="text-xs">{localSettings[key] ? '✓ Açık' : 'Kapalı'}</span>
+                    <span className="text-xs opacity-70">{localSettings[key] ? '✓ Açık' : 'Kapalı'}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Süreler */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-400 block mb-1">
-                  ☀️ Gündüz Süresi
-                  <span className="text-yellow-400 ml-1 font-bold">{localSettings.dayDuration}s</span>
-                </label>
-                <input
-                  type="range" min={30} max={300} step={15}
-                  value={localSettings.dayDuration}
-                  onChange={(e) => set('dayDuration', Number(e.target.value))}
-                  className="w-full accent-yellow-500"
-                />
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>30s</span><span>300s</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 block mb-1">
-                  🌙 Gece Süresi
-                  <span className="text-indigo-400 ml-1 font-bold">{localSettings.nightDuration}s</span>
-                </label>
-                <input
-                  type="range" min={20} max={120} step={10}
-                  value={localSettings.nightDuration}
-                  onChange={(e) => set('nightDuration', Number(e.target.value))}
-                  className="w-full accent-indigo-500"
-                />
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>20s</span><span>120s</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 block mb-1">
-                  ⚖️ Savunma Süresi
-                  <span className="text-amber-400 ml-1 font-bold">{localSettings.trialDuration}s</span>
-                </label>
-                <input
-                  type="range" min={15} max={90} step={15}
-                  value={localSettings.trialDuration}
-                  onChange={(e) => set('trialDuration', Number(e.target.value))}
-                  className="w-full accent-amber-500"
-                />
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>15s</span><span>90s</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 block mb-1">
-                  🗳️ Karar Süresi
-                  <span className="text-orange-400 ml-1 font-bold">{localSettings.verdictDuration}s</span>
-                </label>
-                <input
-                  type="range" min={15} max={60} step={15}
-                  value={localSettings.verdictDuration}
-                  onChange={(e) => set('verdictDuration', Number(e.target.value))}
-                  className="w-full accent-orange-500"
-                />
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>15s</span><span>60s</span>
-                </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Süreler</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                {([
+                  { key: 'dayDuration',     icon: '☀️', label: 'Gündüz',  color: '#facc15', accent: 'accent-yellow-400',  min: 30,  max: 300, step: 15 },
+                  { key: 'nightDuration',   icon: '🌙', label: 'Gece',    color: '#818cf8', accent: 'accent-indigo-400',  min: 20,  max: 120, step: 10 },
+                  { key: 'trialDuration',   icon: '⚖️', label: 'Savunma', color: '#fbbf24', accent: 'accent-amber-400',   min: 15,  max: 90,  step: 15 },
+                  { key: 'verdictDuration', icon: '🗳️', label: 'Karar',   color: '#fb923c', accent: 'accent-orange-400',  min: 15,  max: 60,  step: 15 },
+                ] as const).map(({ key, icon, label, color, accent, min, max, step }) => (
+                  <div key={key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">{icon} {label}</span>
+                      <span className="text-xs font-bold" style={{ color }}>{localSettings[key]}s</span>
+                    </div>
+                    <input
+                      type="range" min={min} max={max} step={step}
+                      value={localSettings[key]}
+                      onChange={(e) => set(key, Number(e.target.value))}
+                      className={`w-full ${accent}`}
+                      style={{ height: 4 }}
+                    />
+                    <div className="flex justify-between text-xs text-gray-700 mt-0.5">
+                      <span>{min}s</span><span>{max}s</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -222,34 +235,62 @@ export default function Lobby() {
 
         {/* Host olmayan için ayar özeti */}
         {!isHost && settings && (
-          <div className="card text-sm text-gray-400">
-            <h3 className="text-gray-300 font-semibold mb-2">Oyun Ayarları</h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <span>Vampir:</span><span className="text-blood-400 font-bold">{settings.vampireCount}</span>
-              <span>Doktor:</span><span>{settings.includeDoctor ? '✅ Var' : '❌ Yok'}</span>
-              <span>Kahin:</span><span>{settings.includeSeer ? '✅ Var' : '❌ Yok'}</span>
-              <span>Avcı:</span><span>{settings.includeHunter ? '✅ Var' : '❌ Yok'}</span>
-              <span>Gündüz:</span><span>{settings.dayDuration}s</span>
-              <span>Gece:</span><span>{settings.nightDuration}s</span>
-              <span>Savunma:</span><span>{settings.trialDuration}s</span>
-              <span>Karar:</span><span>{settings.verdictDuration}s</span>
+          <div
+            className="rounded-2xl border border-white/8 p-4"
+            style={{ background: 'rgba(8,3,20,0.7)' }}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-900 to-transparent"/>
+              <h3 className="text-xs font-bold text-gray-500 tracking-widest uppercase">Oyun Ayarları</h3>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blood-900 to-transparent"/>
+            </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              <span className="text-gray-600">🩸 Vampir</span>
+              <span className="text-blood-400 font-bold">{settings.vampireCount}</span>
+              <span className="text-gray-600">🩺 Doktor</span>
+              <span className={settings.includeDoctor ? 'text-green-400' : 'text-gray-600'}>{settings.includeDoctor ? '✓ Var' : '— Yok'}</span>
+              <span className="text-gray-600">🔮 Kahin</span>
+              <span className={settings.includeSeer ? 'text-green-400' : 'text-gray-600'}>{settings.includeSeer ? '✓ Var' : '— Yok'}</span>
+              <span className="text-gray-600">🏹 Avcı</span>
+              <span className={settings.includeHunter ? 'text-green-400' : 'text-gray-600'}>{settings.includeHunter ? '✓ Var' : '— Yok'}</span>
+              <span className="text-gray-600">☀️ Gündüz</span>
+              <span className="text-yellow-500">{settings.dayDuration}s</span>
+              <span className="text-gray-600">🌙 Gece</span>
+              <span className="text-indigo-400">{settings.nightDuration}s</span>
+              <span className="text-gray-600">⚖️ Savunma</span>
+              <span className="text-amber-400">{settings.trialDuration}s</span>
+              <span className="text-gray-600">🗳️ Karar</span>
+              <span className="text-orange-400">{settings.verdictDuration}s</span>
             </div>
           </div>
         )}
 
         {isHost ? (
           <button
-            className="btn-primary w-full py-4 text-lg"
+            className="w-full py-4 rounded-2xl font-bold text-base tracking-wide transition-all duration-200 border"
             disabled={playerList.length < 4}
             onClick={handleStart}
+            style={playerList.length < 4
+              ? { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: '#6b7280', cursor: 'not-allowed' }
+              : {
+                  background: 'rgba(153,27,27,0.55)',
+                  borderColor: 'rgba(153,27,27,0.7)',
+                  color: '#fecaca',
+                  boxShadow: '0 0 20px rgba(153,27,27,0.3)',
+                }
+            }
           >
             {playerList.length < 4
               ? `Oyun için ${4 - playerList.length} oyuncu daha lazım`
               : '🎮 Oyunu Başlat'}
-        </button>
+          </button>
         ) : (
-          <div className="text-center text-gray-500 py-4">
-            Oda sahibinin oyunu başlatması bekleniyor...
+          <div className="text-center py-4">
+            <div className="flex items-center justify-center gap-3">
+              <div className="h-px w-12 bg-gradient-to-r from-transparent to-blood-900"/>
+              <span className="text-gray-600 text-sm tracking-wide">Lider başlatmayı bekliyor</span>
+              <div className="h-px w-12 bg-gradient-to-l from-transparent to-blood-900"/>
+            </div>
           </div>
         )}
       </div>
