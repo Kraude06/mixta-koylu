@@ -123,16 +123,16 @@ socket.on('game:state', (state) => {
   });
 });
 
-socket.on('game:phase', (phase, dayNumber, endTime) => {
-  useGameStore.setState((prev) => ({
+socket.on('game:phase', (phase, dayNumber, endTime, accusedPlayerId) => {
+  useGameStore.setState({
     phase,
     dayNumber,
     phaseEndTime: endTime,
     votes: {},
     verdictVotes: {},
     eliminatedPlayerId: null,
-    accusedPlayerId: phase === 'trial' || phase === 'verdict' ? prev.accusedPlayerId : null,
-  }));
+    accusedPlayerId: accusedPlayerId ?? null,
+  });
 });
 
 socket.on('verdict:update', (votes) => {

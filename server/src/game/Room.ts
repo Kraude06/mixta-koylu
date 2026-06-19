@@ -173,6 +173,7 @@ export class Room {
     this.phase = 'day';
     this.dayNumber++;
     this.eliminatedPlayerId = undefined;
+    this.accusedPlayerId = undefined;
     const alivePlayers = Object.values(this.players).filter(p => p.isAlive);
     alivePlayers.forEach(p => { p.vote = undefined; });
     this.phaseEndTime = Date.now() + this.settings.dayDuration * 1000;
@@ -221,13 +222,16 @@ export class Room {
         tally[t] = (tally[t] ?? 0) + 1;
       });
 
+    console.log(`[vote] tally:`, JSON.stringify(tally));
     const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]);
     if (sorted.length === 0 || (sorted.length > 1 && sorted[0][1] === sorted[1][1])) {
+      console.log(`[vote] beraberlik veya oy yok → gece başlıyor`);
       this.addSystemMessage('🤝 Oylar eşit — kimse yargılanmıyor, gece başlıyor.');
       this.startNight();
       return;
     }
 
+    console.log(`[vote] kazanan: ${sorted[0][0]} (${sorted[0][1]} oy) → trial`);
     this.startTrial(sorted[0][0]);
   }
 
@@ -237,9 +241,9 @@ export class Room {
     this.phase = 'trial';
     this.phaseEndTime = Date.now() + this.settings.trialDuration * 1000;
     const accused = this.players[accusedId];
+    console.log(`[trial] ${accused?.name ?? accusedId} yargılanıyor (${this.settings.trialDuration}s)`);
     this.addSystemMessage(`⚖️ ${accused?.name} meydana çıktı — savunma süresi başladı!`);
-    this.broadcast('game:state', this.getPublicState());
-    this.broadcast('game:phase', this.phase, this.dayNumber, this.phaseEndTime);
+    this.broadcast('game:phase', 'trial', this.dayNumber, this.phaseEndTime, accusedId);
     this.schedulePhaseEnd(this.settings.trialDuration * 1000, () => this.startVerdict());
   }
 
@@ -248,8 +252,9 @@ export class Room {
     this.verdictVotes = {};
     this.phaseEndTime = Date.now() + this.settings.verdictDuration * 1000;
     const accused = this.players[this.accusedPlayerId!];
+    console.log(`[verdict] ${accused?.name ?? this.accusedPlayerId} için karar oylaması (${this.settings.verdictDuration}s)`);
     this.addSystemMessage(`🗳️ ${accused?.name} suçlu mu? Oyunuzu kullanın!`);
-    this.broadcast('game:phase', this.phase, this.dayNumber, this.phaseEndTime);
+    this.broadcast('game:phase', 'verdict', this.dayNumber, this.phaseEndTime, this.accusedPlayerId);
     this.schedulePhaseEnd(this.settings.verdictDuration * 1000, () => this.resolveVerdict());
   }
 
@@ -274,6 +279,7 @@ export class Room {
 
     const guiltyCount = Object.values(this.verdictVotes).filter(v => v === 'guilty').length;
     const innocentCount = Object.values(this.verdictVotes).filter(v => v === 'innocent').length;
+    console.log(`[verdict] suçlu:${guiltyCount} suçsuz:${innocentCount}`);
     const accusedId = this.accusedPlayerId!;
     const accusedName = this.players[accusedId]?.name ?? '?';
     this.accusedPlayerId = undefined;
