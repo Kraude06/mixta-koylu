@@ -27,11 +27,13 @@ interface GameStore {
   myNotes: string;
   error: string | null;
   isConnected: boolean;
+  deathEvent: { role: RoleType; reason: 'voted' | 'killed' | 'hunter' } | null;
 
   setMyId: (id: string) => void;
   setMyName: (name: string) => void;
   setMyNotes: (notes: string) => void;
   clearError: () => void;
+  clearDeathEvent: () => void;
   reset: () => void;
   applyState: (state: PersonalGameState, settings?: GameSettings) => void;
 }
@@ -58,6 +60,7 @@ const defaultState = {
   myNotes: '',
   error: null,
   isConnected: false,
+  deathEvent: null,
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -70,6 +73,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     socket.emit('notes:update', notes);
   },
   clearError: () => set({ error: null }),
+  clearDeathEvent: () => set({ deathEvent: null }),
   reset: () => set(defaultState),
 
   applyState: (state, settings) => set((prev) => ({
@@ -136,6 +140,7 @@ socket.on('verdict:update', (votes) => {
 });
 
 socket.on('game:eliminated', (playerId, role, reason) => {
+  const myId = useGameStore.getState().myId;
   useGameStore.setState((prev) => ({
     players: {
       ...prev.players,
@@ -144,6 +149,7 @@ socket.on('game:eliminated', (playerId, role, reason) => {
         : prev.players[playerId],
     },
     eliminatedPlayerId: playerId,
+    deathEvent: playerId === myId ? { role, reason } : prev.deathEvent,
   }));
 });
 

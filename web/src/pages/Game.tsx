@@ -17,7 +17,7 @@ export default function Game() {
   const {
     phase, dayNumber, players, messages, myId, myRole, myTeam,
     seerResults, winner, phaseEndTime, votes, verdictVotes, accusedPlayerId,
-    error, clearError, hunterPlayerId,
+    error, clearError, hunterPlayerId, deathEvent, clearDeathEvent,
   } = useGameStore();
 
   const [nightTarget, setNightTarget] = useState<string | undefined>();
@@ -25,6 +25,7 @@ export default function Game() {
   const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(10);
+  const [deathDismissIn, setDeathDismissIn] = useState(7);
 
   const me = myId ? players[myId] : undefined;
   const isAlive = me?.isAlive ?? false;
@@ -55,6 +56,22 @@ export default function Game() {
   useEffect(() => {
     if (phase === 'day' || phase === 'lobby') setNightTarget(undefined);
   }, [phase]);
+
+  useEffect(() => {
+    if (!deathEvent) return;
+    setDeathDismissIn(7);
+    const interval = setInterval(() => {
+      setDeathDismissIn((c) => {
+        if (c <= 1) { clearInterval(interval); clearDeathEvent(); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [deathEvent, clearDeathEvent]);
+
+  useEffect(() => {
+    if (phase === 'game-over') clearDeathEvent();
+  }, [phase, clearDeathEvent]);
 
   useEffect(() => {
     if (error) {
@@ -92,10 +109,95 @@ export default function Game() {
 
   const roleInfo = myRole ? ROLE_INFO[myRole] : null;
 
+  const deathReasonText = deathEvent?.reason === 'voted'
+    ? 'Köy seni suçlu buldu ve idam etti.'
+    : deathEvent?.reason === 'killed'
+      ? 'Vampirler bu gece seni kurban seçti.'
+      : 'Avcı son nefesinde seni yanına götürdü.';
+
+  const DRIPS = [
+    { left: 6, h: 55, d: 0 }, { left: 14, h: 38, d: 0.07 }, { left: 24, h: 68, d: 0.05 },
+    { left: 34, h: 44, d: 0.12 }, { left: 46, h: 72, d: 0.03 }, { left: 57, h: 40, d: 0.09 },
+    { left: 68, h: 62, d: 0.06 }, { left: 78, h: 48, d: 0.11 }, { left: 88, h: 58, d: 0.04 },
+    { left: 95, h: 35, d: 0.08 },
+  ];
+
   return (
     <div className="h-screen flex flex-col bg-night-950 overflow-hidden">
       <SkyScene phase={phase} />
       <PhaseBar phase={phase} dayNumber={dayNumber} phaseEndTime={phaseEndTime} />
+
+      {/* Death overlay */}
+      {deathEvent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ animation: 'deathIn 0.4s ease-out forwards' }}>
+          <div className="absolute inset-0 bg-black/92 backdrop-blur-md" />
+
+          {/* Kan damlaları */}
+          <div className="absolute top-0 left-0 right-0 pointer-events-none">
+            {DRIPS.map((d, i) => (
+              <div
+                key={i}
+                className="absolute top-0 rounded-b-full"
+                style={{
+                  left: `${d.left}%`,
+                  width: 10,
+                  height: d.h,
+                  background: 'linear-gradient(to bottom, #7f1d1d, #991b1b)',
+                  animation: `dripDown 0.6s ${d.d}s cubic-bezier(0.4,0,0.2,1) both`,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="relative z-10 text-center px-6 max-w-sm w-full">
+            {/* Kafatası */}
+            <div style={{ animation: 'skullIn 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both', fontSize: 96 }}>
+              💀
+            </div>
+
+            {/* Başlık */}
+            <h1
+              className="text-5xl font-black text-blood-400 mt-2 mb-1 tracking-tight"
+              style={{ animation: 'fadeUp 0.4s 0.5s ease-out both', textShadow: '0 0 30px #991b1b' }}
+            >
+              Sen Öldün!
+            </h1>
+
+            {/* Sebep */}
+            <p
+              className="text-gray-400 text-base mb-6"
+              style={{ animation: 'fadeUp 0.4s 0.65s ease-out both' }}
+            >
+              {deathReasonText}
+            </p>
+
+            {/* Rol kartı */}
+            <div
+              className="mb-6 bg-night-900/80 border border-white/10 rounded-2xl p-4"
+              style={{ animation: 'fadeUp 0.4s 0.75s ease-out both' }}
+            >
+              <p className="text-xs text-gray-500 mb-2 uppercase tracking-widest">Rolün</p>
+              <RoleCard role={deathEvent.role} expanded />
+            </div>
+
+            {/* Buton */}
+            <button
+              onClick={clearDeathEvent}
+              className="btn-primary w-full py-3 text-base"
+              style={{ animation: 'fadeUp 0.4s 0.9s ease-out both' }}
+            >
+              Anladım ({deathDismissIn}s)
+            </button>
+          </div>
+
+          <style>{`
+            @keyframes deathIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes dripDown { from { transform: scaleY(0); transform-origin: top; opacity: 0; } to { transform: scaleY(1); transform-origin: top; opacity: 1; } }
+            @keyframes skullIn { from { opacity: 0; transform: scale(0.3) translateY(-40px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+            @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+          `}</style>
+        </div>
+      )}
 
       {/* Game over overlay */}
       {phase === 'game-over' && winner && (
