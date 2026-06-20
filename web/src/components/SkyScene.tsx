@@ -111,10 +111,16 @@ export default function SkyScene({ phase }: Props) {
           <stop offset="100%" stopColor={isHunter ? '#3d0a00' : '#16143a'}/>
         </linearGradient>
 
-        {/* Güneş / ay parıltısı */}
+        {/* Güneş parıltısı */}
         <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor={isTrial ? '#f97316' : isVerdict ? '#ef4444' : '#fde68a'} stopOpacity="0.7"/>
-          <stop offset="60%"  stopColor={isTrial ? '#c2410c' : isVerdict ? '#b91c1c' : '#fbbf24'} stopOpacity="0.25"/>
+          <stop offset="0%"   stopColor={isTrial ? '#f97316' : isVerdict ? '#ef4444' : '#fff4a0'} stopOpacity="0.85"/>
+          <stop offset="30%"  stopColor={isTrial ? '#f97316' : isVerdict ? '#ef4444' : '#fde047'} stopOpacity="0.45"/>
+          <stop offset="65%"  stopColor={isTrial ? '#c2410c' : isVerdict ? '#b91c1c' : '#fb923c'} stopOpacity="0.18"/>
+          <stop offset="100%" stopColor="transparent" stopOpacity="0"/>
+        </radialGradient>
+        {/* Gökyüzü aydınlığı — güneşin çevresindeki gökyüzü açılır */}
+        <radialGradient id="sky-sun-bright" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor={isTrial ? '#7c3200' : isVerdict ? '#7c1000' : '#bae6fd'} stopOpacity="0.55"/>
           <stop offset="100%" stopColor="transparent" stopOpacity="0"/>
         </radialGradient>
         <radialGradient id="moon-glow" cx="50%" cy="50%" r="50%">
@@ -127,9 +133,14 @@ export default function SkyScene({ phase }: Props) {
         <filter id="fog-blur" x="-10%" y="-10%" width="120%" height="120%">
           <feGaussianBlur stdDeviation="1.8"/>
         </filter>
-        {/* Hafif parlama filtresi */}
-        <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="1.2" result="blur"/>
+        {/* Parlama filtresi */}
+        <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        {/* Güçlü güneş parıltısı */}
+        <filter id="sun-filter" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.5" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
@@ -192,50 +203,92 @@ export default function SkyScene({ phase }: Props) {
       {/* ── GÜNDÜZ ── */}
       {isDay && (
         <>
-          {/* Güneş parıltısı */}
-          <circle cx="88" cy="14" r="22" fill="url(#sun-glow)"/>
-          {/* Güneş */}
-          <circle cx="88" cy="14" r={isTrial || isVerdict ? 7 : 8.5}
-            fill={isTrial ? '#f97316' : isVerdict ? '#dc2626' : '#fde047'}
-            filter="url(#glow)"/>
+          {/* Güneş konumu: sağ üst, görünür alanda */}
+          {(() => {
+            const sx = isTrial ? 82 : isVerdict ? 82 : 80;
+            const sy = isTrial ? 28 : isVerdict ? 28 : 26;
+            const sr = isTrial ? 8 : isVerdict ? 8 : 11;
+            const sunColor = isTrial ? '#f97316' : isVerdict ? '#dc2626' : '#fef08a';
+            const rayColor = isTrial ? '#fb923c' : isVerdict ? '#f87171' : '#fde047';
+            return (
+              <>
+                {/* Gökyüzü aydınlığı (güneşin çevresi) */}
+                <circle cx={sx} cy={sy} r="50" fill="url(#sky-sun-bright)"/>
 
-          {/* Güneş ışınları (normal gündüz için) */}
-          {!isTrial && !isVerdict && (
-            <g stroke="#fde047" strokeWidth="0.4" opacity="0.25">
-              {[0,30,60,90,120,150,210,240,270,300,330].map((a,i) => (
-                <line key={i}
-                  x1={88 + Math.cos(a*Math.PI/180)*10}
-                  y1={14 + Math.sin(a*Math.PI/180)*10}
-                  x2={88 + Math.cos(a*Math.PI/180)*16}
-                  y2={14 + Math.sin(a*Math.PI/180)*16}/>
-              ))}
-            </g>
-          )}
+                {/* Normal gündüz: dönen uzun ışınlar (SVG animateTransform ile) */}
+                {!isTrial && !isVerdict && (
+                  <g opacity="0.36">
+                    <g>
+                      {[0,22.5,45,67.5,90,112.5,135,157.5,180,202.5,225,247.5,270,292.5,315,337.5].map((a, i) => {
+                        const r1 = sr + 3, r2 = sr + 12 + (i%3)*5;
+                        const rad = a * Math.PI / 180;
+                        return (
+                          <line key={i}
+                            x1={sx + Math.cos(rad)*r1} y1={sy + Math.sin(rad)*r1}
+                            x2={sx + Math.cos(rad)*r2} y2={sy + Math.sin(rad)*r2}
+                            stroke={rayColor} strokeWidth={i%2===0 ? 0.65 : 0.38}/>
+                        );
+                      })}
+                      <animateTransform attributeName="transform" type="rotate"
+                        from={`0 ${sx} ${sy}`} to={`360 ${sx} ${sy}`}
+                        dur="48s" repeatCount="indefinite"/>
+                    </g>
+                  </g>
+                )}
+
+                {/* Büyük parıltı hâlesi */}
+                <circle cx={sx} cy={sy} r={sr + 22} fill="url(#sun-glow)" opacity="0.9"/>
+                <circle cx={sx} cy={sy} r={sr + 10} fill="url(#sun-glow)" opacity="0.6"/>
+
+                {/* Güneş diski */}
+                <circle cx={sx} cy={sy} r={sr} fill={sunColor} filter="url(#sun-filter)"/>
+
+                {/* İç parlak merkez */}
+                <circle cx={sx} cy={sy} r={sr * 0.55} fill="white" opacity="0.45"/>
+
+                {/* Trial/Verdict: kısa sert ışınlar */}
+                {(isTrial || isVerdict) && (
+                  <g stroke={rayColor} strokeWidth="0.5" opacity="0.35">
+                    {[0,45,90,135,180,225,270,315].map((a, i) => {
+                      const r1 = sr + 2, r2 = sr + 9;
+                      const rad = a * Math.PI / 180;
+                      return <line key={i}
+                        x1={sx + Math.cos(rad)*r1} y1={sy + Math.sin(rad)*r1}
+                        x2={sx + Math.cos(rad)*r2} y2={sy + Math.sin(rad)*r2}/>;
+                    })}
+                  </g>
+                )}
+              </>
+            );
+          })()}
 
           {/* Bulutlar — normal gündüz */}
           {!isTrial && !isVerdict && (
             <>
-              <g opacity="0.88" filter="url(#fog-blur)">
-                <ellipse cx="20" cy="22" rx="13" ry="5.5" fill="white">
-                  <animateTransform attributeName="transform" type="translate" values="0,0;5,0;0,0" dur="22s" repeatCount="indefinite"/>
+              <g opacity="0.82" filter="url(#fog-blur)">
+                <ellipse cx="18" cy="30" rx="14" ry="6" fill="white">
+                  <animateTransform attributeName="transform" type="translate" values="0,0;6,0;0,0" dur="24s" repeatCount="indefinite"/>
                 </ellipse>
-                <ellipse cx="26" cy="18" rx="9" ry="4.5" fill="white">
-                  <animateTransform attributeName="transform" type="translate" values="0,0;5,0;0,0" dur="22s" repeatCount="indefinite"/>
+                <ellipse cx="25" cy="25" rx="10" ry="5" fill="white">
+                  <animateTransform attributeName="transform" type="translate" values="0,0;6,0;0,0" dur="24s" repeatCount="indefinite"/>
                 </ellipse>
-              </g>
-              <g opacity="0.78" filter="url(#fog-blur)">
-                <ellipse cx="56" cy="26" rx="11" ry="5" fill="white">
-                  <animateTransform attributeName="transform" type="translate" values="0,0;-6,0;0,0" dur="28s" repeatCount="indefinite"/>
-                </ellipse>
-                <ellipse cx="50" cy="22" rx="8" ry="4" fill="white">
-                  <animateTransform attributeName="transform" type="translate" values="0,0;-6,0;0,0" dur="28s" repeatCount="indefinite"/>
+                <ellipse cx="12" cy="26" rx="7" ry="4" fill="#f0f8ff">
+                  <animateTransform attributeName="transform" type="translate" values="0,0;6,0;0,0" dur="24s" repeatCount="indefinite"/>
                 </ellipse>
               </g>
-              {/* Uzakta küçük kuşlar */}
-              <g fill="#0e4a7a" opacity="0.4">
-                <path d="M35,18 Q36,16 37,18"/>
-                <path d="M39,15 Q40,13 41,15"/>
-                <path d="M43,19 Q44,17 45,19"/>
+              <g opacity="0.72" filter="url(#fog-blur)">
+                <ellipse cx="52" cy="34" rx="12" ry="5.5" fill="white">
+                  <animateTransform attributeName="transform" type="translate" values="0,0;-7,0;0,0" dur="30s" repeatCount="indefinite"/>
+                </ellipse>
+                <ellipse cx="46" cy="30" rx="9" ry="4.5" fill="white">
+                  <animateTransform attributeName="transform" type="translate" values="0,0;-7,0;0,0" dur="30s" repeatCount="indefinite"/>
+                </ellipse>
+              </g>
+              {/* Küçük kuşlar */}
+              <g stroke="#1e6fa8" strokeWidth="0.4" fill="none" opacity="0.45">
+                <path d="M32,22 Q33.5,20 35,22"/>
+                <path d="M37,19 Q38.5,17 40,19"/>
+                <path d="M42,23 Q43.5,21 45,23"/>
               </g>
             </>
           )}
@@ -243,18 +296,16 @@ export default function SkyScene({ phase }: Props) {
           {/* Dramatik bulutlar — yargılama/karar */}
           {(isTrial || isVerdict) && (
             <>
-              <ellipse cx="20" cy="24" rx="14" ry="5" fill={isTrial ? '#78350f' : '#7f1d1d'} opacity="0.65" filter="url(#fog-blur)"/>
-              <ellipse cx="50" cy="18" rx="11" ry="4" fill={isTrial ? '#92400e' : '#991b1b'} opacity="0.55" filter="url(#fog-blur)"/>
-              <ellipse cx="35" cy="32" rx="10" ry="3.5" fill={isTrial ? '#6b2800' : '#6b0000'} opacity="0.4" filter="url(#fog-blur)"/>
-              {/* Zemin kızıllığı */}
-              <rect x="0" y="55%" width="100" height="20%" fill={isTrial ? '#7c3a00' : '#7c0000'} opacity="0.08" filter="url(#fog-blur)"/>
+              <ellipse cx="18" cy="30" rx="16" ry="6" fill={isTrial ? '#78350f' : '#7f1d1d'} opacity="0.7" filter="url(#fog-blur)"/>
+              <ellipse cx="48" cy="24" rx="13" ry="5" fill={isTrial ? '#92400e' : '#991b1b'} opacity="0.6" filter="url(#fog-blur)"/>
+              <ellipse cx="33" cy="38" rx="11" ry="4" fill={isTrial ? '#6b2800' : '#6b0000'} opacity="0.45" filter="url(#fog-blur)"/>
+              <rect x="0" y="55%" width="100" height="20%" fill={isTrial ? '#7c3a00' : '#7c0000'} opacity="0.1" filter="url(#fog-blur)"/>
             </>
           )}
 
-          {/* Alt sis (normal gündüz için hafif) */}
-          {!isTrial && !isVerdict && (
-            <rect x="0" y="66%" width="100" height="8%" fill="white" opacity="0.06" filter="url(#fog-blur)"/>
-          )}
+          {/* Alt sis */}
+          <rect x="0" y="66%" width="100" height="8%" fill="white" opacity={isTrial || isVerdict ? 0.04 : 0.07} filter="url(#fog-blur)"/>
+
         </>
       )}
 

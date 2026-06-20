@@ -559,7 +559,7 @@ export default function Game() {
         {/* Arka plan sahne */}
         <SkyScene phase={phase} />
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'linear-gradient(to bottom, rgba(2,0,12,0.78) 0%, rgba(2,0,12,0.42) 25%, rgba(2,0,12,0.38) 72%, rgba(2,0,12,0.82) 100%)',
+          background: 'linear-gradient(to bottom, rgba(2,0,12,0.70) 0%, rgba(2,0,12,0.32) 22%, rgba(2,0,12,0.36) 68%, rgba(2,0,12,0.84) 100%)',
         }} />
 
         {/* Sidebar - Players (desktop) */}
