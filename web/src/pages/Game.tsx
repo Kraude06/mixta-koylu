@@ -181,7 +181,7 @@ export default function Game() {
   const showNightActions = phase === 'night' && isAlive && myRole && myRole !== 'villager';
   const showVoting = phase === 'day' && isAlive;
   const showHunterRevenge = isMyHunterRevenge;
-  const showVerdict = phase === 'verdict' && isAlive;
+  const showVerdict = phase === 'verdict' && isAlive && myId !== accusedPlayerId;
   const myVerdictVote = myId ? verdictVotes[myId] : undefined;
   const accusedPlayer = accusedPlayerId ? players[accusedPlayerId] : undefined;
   const guiltyCount = Object.values(verdictVotes).filter(v => v === 'guilty').length;

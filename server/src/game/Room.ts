@@ -264,6 +264,7 @@ export class Room {
     if (this.phase !== 'verdict') return 'Şu an karar zamanı değil.';
     const voter = this.players[voterId];
     if (!voter?.isAlive) return 'Ölü oyuncular oy kullanamaz.';
+    if (voterId === this.accusedPlayerId) return 'Sanık kendi oylamasında oy kullanamaz.';
 
     this.verdictVotes[voterId] = vote;
     this.broadcast('verdict:update', { ...this.verdictVotes });
