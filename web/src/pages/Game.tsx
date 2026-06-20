@@ -387,31 +387,28 @@ export default function Game() {
               {deathReasonText}
             </p>
 
-            {/* Rol kartı */}
+            {/* Rol kartı + not (açıklama yerine) */}
             <div
-              className="mb-3 bg-night-900/80 border border-white/10 rounded-2xl p-3"
+              className="mb-3 bg-night-900/80 border border-white/10 rounded-2xl p-3 text-left"
               style={{ animation: 'fadeUp 0.4s 0.65s ease-out both' }}
             >
               <p className="text-xs text-gray-500 mb-2 uppercase tracking-widest">
                 {deathEvent.isMe ? 'Rolün' : `${deathEvent.playerName}'in Rolü`}
               </p>
-              <RoleCard role={deathEvent.role} expanded />
-            </div>
-
-            {/* Notlar — varsa göster */}
-            {deathEvent.notes.trim() && (
-              <div
-                className="mb-3 bg-night-900/80 border border-white/10 rounded-2xl p-3 text-left"
-                style={{ animation: 'fadeUp 0.4s 0.78s ease-out both' }}
-              >
+              <RoleCard role={deathEvent.role} />
+              <div className="mt-3 pt-3 border-t border-white/10">
                 <p className="text-xs text-gray-500 mb-1 uppercase tracking-widest">
                   📝 {deathEvent.isMe ? 'Notların' : `${deathEvent.playerName}'in Notları`}
                 </p>
-                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-5 leading-relaxed">
-                  {deathEvent.notes}
-                </p>
+                {deathEvent.notes.trim() ? (
+                  <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-5 leading-relaxed">
+                    {deathEvent.notes}
+                  </p>
+                ) : (
+                  <p className="text-gray-600 text-sm italic">Not bırakmamış.</p>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Buton */}
             <button
