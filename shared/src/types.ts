@@ -226,6 +226,10 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   'room:create': (playerName: string, cb: (roomCode: string, playerId: string) => void) => void;
   'room:join': (roomCode: string, playerName: string, cb: (ok: boolean, err?: string, playerId?: string) => void) => void;
+  /** Lobiden bilinçli çıkış: oyuncu hemen silinir, gerekirse sahiplik devredilir */
+  'room:leave': (cb: () => void) => void;
+  /** Oda sahibi sahipliği başka bir oyuncuya verir (sadece lobide) */
+  'room:transfer-host': (targetId: string) => void;
   'game:start': (settings: Partial<GameSettings>) => void;
   /** targetId boş string ise oy geri çekilir */
   'game:vote': (targetId: string) => void;

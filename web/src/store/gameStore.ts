@@ -208,6 +208,21 @@ if (savedSession) {
   socket.connect();
 }
 
+/** Lobiden bilinçli çıkış: sunucuya bildir, oturumu sil, ana sayfaya dön */
+export function leaveRoom(): void {
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    clearSession();
+    useGameStore.getState().reset();
+    socket.disconnect();
+  };
+  if (!socket.connected) { done(); return; }
+  setTimeout(done, 2000); // sunucu yanıt vermezse yine de çık
+  socket.emit('room:leave', done);
+}
+
 /** Yeniden bağlanma ekranındaki "Vazgeç" */
 export function abandonRestore(): void {
   clearSession();

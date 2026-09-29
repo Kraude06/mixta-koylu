@@ -105,15 +105,35 @@ export class Room {
 
   /** Lobide hâlâ dönmemiş oyuncuyu odadan çıkarır. Oyun sırasında dokunmaz (bitince temizlenir). */
   purgeIfDisconnected(id: string): boolean {
-    if (this.phase !== 'lobby' || !this.disconnected.has(id)) return false;
+    if (!this.disconnected.has(id)) return false;
+    return this.leave(id);
+  }
+
+  /** Oyuncuyu lobiden hemen çıkarır; oda sahibiyse sahiplik bir sonraki oyuncuya geçer. */
+  leave(id: string): boolean {
+    if (this.phase !== 'lobby' || !this.players[id]) return false;
     this.disconnected.delete(id);
     delete this.players[id];
     this.renumber();
-    const remaining = Object.values(this.players);
-    if (remaining.length > 0 && !remaining.some(p => p.isHost)) {
-      remaining[0].isHost = true;
-    }
+    this.ensureHost();
     return true;
+  }
+
+  transferHost(fromId: string, toId: string): string | null {
+    if (this.phase !== 'lobby') return 'Sahiplik sadece lobide devredilebilir.';
+    if (!this.players[fromId]?.isHost) return 'Sadece oda sahibi sahipliği devredebilir.';
+    if (!this.players[toId] || toId === fromId) return 'Geçersiz oyuncu.';
+    this.players[fromId].isHost = false;
+    this.players[toId].isHost = true;
+    return null;
+  }
+
+  /** Oda sahibi kalmadıysa (bağlı olanlar öncelikli) ilk oyuncuyu sahip yap */
+  private ensureHost(): void {
+    const remaining = Object.values(this.players);
+    if (remaining.length === 0 || remaining.some(p => p.isHost)) return;
+    const next = remaining.find(p => !this.disconnected.has(p.id)) ?? remaining[0];
+    next.isHost = true;
   }
 
   markConnected(id: string): void {
@@ -673,11 +693,9 @@ export class Room {
       p.nightActionDone = false;
     });
     this.renumber();
+    this.ensureHost();
 
     const remaining = Object.values(this.players);
-    if (remaining.length > 0 && !remaining.some(p => p.isHost)) {
-      remaining[0].isHost = true;
-    }
     console.log(`[resetToLobby] ${remaining.length} oyuncu, host=${remaining.find(p => p.isHost)?.name ?? 'YOK'}`);
 
     this.messages.push(this.createMessage('system', 'Sistem', '🔄 Yeni oyun hazır! Oda sahibi ayarları yapıp başlatabilir.', 'system', 'info'));

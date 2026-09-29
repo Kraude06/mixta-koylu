@@ -149,6 +149,37 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     console.log(`[+] Odaya katıldı: ${normalCode} — ${trimmedName}`);
   });
 
+  socket.on('room:leave', (cb) => {
+    const room = getRoom(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    if (room && playerId) {
+      if (voiceSockets.delete(socket.id)) io.to(room.code).emit('voice:peer-left', playerId);
+      if (room.leave(playerId)) {
+        socket.leave(room.code);
+        socketToRoom.delete(socket.id);
+        socketToPlayer.delete(socket.id);
+        if (room.getPlayerCount() === 0) {
+          room.dispose();
+          rooms.delete(room.code);
+          console.log(`[-] Oda silindi (son kişi ayrıldı): ${room.code}`);
+        } else {
+          io.to(room.code).emit('room:player-list', room.getPublicState().players);
+        }
+        console.log(`[-] Odadan ayrıldı: ${room.code}`);
+      }
+    }
+    cb();
+  });
+
+  socket.on('room:transfer-host', (targetId) => {
+    const room = getRoom(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    if (!room || !playerId) return;
+    const err = room.transferHost(playerId, targetId);
+    if (err) { socket.emit('error', err); return; }
+    io.to(room.code).emit('room:player-list', room.getPublicState().players);
+  });
+
   socket.on('game:start', (settings) => {
     const room = getRoom(socket.id);
     const playerId = socketToPlayer.get(socket.id);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GameSettings } from '@vampir-koylu/shared';
 import { socket } from '../socket';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, leaveRoom } from '../store/gameStore';
 
 export default function Lobby() {
   const navigate = useNavigate();
@@ -40,9 +40,30 @@ export default function Lobby() {
     if (phase !== 'lobby') navigate('/game');
   }, [phase, navigate]);
 
+  // İki adımlı onay: 'leave' veya sahipliğin devredileceği oyuncunun id'si
+  const [confirming, setConfirming] = useState<string | null>(null);
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(null), 3500);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
+  function handleTransfer(targetId: string) {
+    if (confirming !== targetId) { setConfirming(targetId); return; }
+    setConfirming(null);
+    socket.emit('room:transfer-host', targetId);
+  }
+
+  function handleLeave() {
+    if (confirming !== 'leave') { setConfirming('leave'); return; }
+    setConfirming(null);
+    leaveRoom();
+  }
+
   const playerList = Object.values(players);
   const me = myId ? players[myId] : undefined;
   const isHost = me?.isHost ?? false;
+  const nextHost = playerList.find(p => p.id !== myId);
 
   function set<K extends keyof GameSettings>(key: K, value: GameSettings[K]) {
     setLocalSettings((prev) => ({ ...prev, [key]: value }));
@@ -132,9 +153,21 @@ export default function Lobby() {
                 >
                   {p.name[0].toUpperCase()}
                 </div>
-                <span className="text-gray-200 flex-1 text-sm">{p.name}</span>
-                {p.isHost && <span className="text-xs text-blood-400 font-semibold">👑 Lider</span>}
-                {p.id === myId && <span className="text-xs text-gray-600">(sen)</span>}
+                <span className="text-gray-200 flex-1 text-sm truncate">{p.name}</span>
+                {p.isHost && <span className="text-xs text-blood-400 font-semibold shrink-0">👑 Lider</span>}
+                {p.id === myId && <span className="text-xs text-gray-600 shrink-0">(sen)</span>}
+                {isHost && p.id !== myId && (
+                  <button
+                    onClick={() => handleTransfer(p.id)}
+                    className="shrink-0 text-xs font-semibold rounded-lg px-2 py-1 border transition-all active:scale-95"
+                    style={confirming === p.id
+                      ? { background: 'rgba(153,27,27,0.5)', borderColor: 'rgba(220,38,38,0.8)', color: '#fecaca' }
+                      : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: '#9ca3af' }}
+                    title="Liderliği bu oyuncuya ver"
+                  >
+                    {confirming === p.id ? 'Emin misin?' : '👑 Devret'}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -297,6 +330,22 @@ export default function Lobby() {
             </div>
           </div>
         )}
+
+        {/* Odadan ayrıl (iki adımlı onay) */}
+        <div className="text-center pt-2 pb-4">
+          <button
+            onClick={handleLeave}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95"
+            style={confirming === 'leave'
+              ? { background: 'rgba(153,27,27,0.5)', borderColor: 'rgba(220,38,38,0.8)', color: '#fecaca' }
+              : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: '#6b7280' }}
+          >
+            {confirming === 'leave' ? 'Ayrılmak için tekrar dokun' : '🚪 Odadan ayrıl'}
+          </button>
+          {confirming === 'leave' && isHost && nextHost && (
+            <p className="text-xs text-gray-500 mt-2">Liderlik <span className="text-gray-300">{nextHost.name}</span> adlı oyuncuya geçecek.</p>
+          )}
+        </div>
       </div>
     </div>
   );
