@@ -1,9 +1,11 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
-import { ServerToClientEvents, ClientToServerEvents } from '@vampir-koylu/shared';
+import { ServerToClientEvents, ClientToServerEvents } from '../../shared/src';
 import { Room } from './game/Room';
 
 const app = express();
@@ -323,6 +325,16 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
 });
 
 app.get('/health', (_, res) => res.json({ ok: true, rooms: rooms.size }));
+
+// Web arayüzü derlenmişse (web/dist) aynı sunucudan sun — VPS'te tek adres yeterli olur.
+// Vercel kullanılıyorsa bu klasör sunucuda olmaz ve bu blok devreye girmez.
+const webDist = path.resolve(__dirname, '../../web/dist');
+if (fs.existsSync(path.join(webDist, 'index.html'))) {
+  app.use(express.static(webDist, { index: false, maxAge: '1h' }));
+  // SPA: /lobby, /game gibi yolları da index.html'e yönlendir
+  app.get('*', (_, res) => res.sendFile(path.join(webDist, 'index.html')));
+  console.log(`🌐 Web arayüzü sunuluyor: ${webDist}`);
+}
 
 const PORT = process.env.PORT ?? 3001;
 httpServer.listen(PORT, () => {

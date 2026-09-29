@@ -4,7 +4,7 @@ import {
   GameSettings, PublicGameState, PersonalGameState, GraveEntry, DeathReveal,
   DeathCause, VerdictChoice, ROLE_INFO,
   revealDurationMs, MAX_TRIALS_PER_DAY, LAST_WORDS_MS, HUNTER_REVENGE_MS,
-} from '@vampir-koylu/shared';
+} from '../../../shared/src';  // göreli yol: paket bağlantısı (symlink) gerektirmez
 
 const DEFAULT_SETTINGS: GameSettings = {
   minPlayers: 4,
