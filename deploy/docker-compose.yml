@@ -1,0 +1,15 @@
+# Oyun container'ı. Dışarıya port açmaz; sunucudaki Caddy (CRM'in frontend container'ı)
+# aynı Docker ağı üzerinden "vampir-koylu:3100" adresine yönlendirir.
+services:
+  vampir-koylu:
+    build: ..
+    image: vampir-koylu
+    container_name: vampir-koylu
+    restart: unless-stopped
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: mixta-crm_default
