@@ -1,10 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import { ServerToClientEvents, ClientToServerEvents } from '@vampir-koylu/shared';
 
-// VITE_SERVER_URL verilmişse (ör. Vercel + ayrı sunucu) onu kullan.
-// Verilmemişse: geliştirmede yerel sunucu, üretimde sayfanın kendi adresi (VPS'te tek adres).
-const SERVER_URL = import.meta.env.VITE_SERVER_URL
-  || (import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin);
+// Oyun sunucusu web arayüzünü de kendisi sunar, bu yüzden her zaman sayfanın kendi adresine bağlanılır.
+// Geliştirmede Vite, /socket.io isteklerini yerel sunucuya (3001) yönlendirir (vite.config.ts).
+const SERVER_URL = window.location.origin;
 
 export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SERVER_URL, {
   autoConnect: false,

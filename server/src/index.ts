@@ -326,8 +326,8 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
 
 app.get('/health', (_, res) => res.json({ ok: true, rooms: rooms.size }));
 
-// Web arayüzü derlenmişse (web/dist) aynı sunucudan sun — VPS'te tek adres yeterli olur.
-// Vercel kullanılıyorsa bu klasör sunucuda olmaz ve bu blok devreye girmez.
+// Web arayüzü derlenmişse (web/dist) aynı sunucudan sun — tek adres yeterli olur.
+// Geliştirmede (npm run dev) arayüzü Vite sunar, bu blok devreye girmez.
 const webDist = path.resolve(__dirname, '../../web/dist');
 if (fs.existsSync(path.join(webDist, 'index.html'))) {
   app.use(express.static(webDist, { index: false, maxAge: '1h' }));

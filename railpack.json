@@ -1,5 +1,0 @@
-{
-  "start": {
-    "cmd": "node_modules/.bin/tsx server/src/index.ts"
-  }
-}
