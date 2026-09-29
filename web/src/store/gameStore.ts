@@ -5,6 +5,33 @@ import {
 } from '@vampir-koylu/shared';
 import { socket } from '../socket';
 
+// ── Oturum (sayfa yenilenince odaya geri dönmek için) ─────────────────────────
+// sessionStorage sekmeye özeldir: yenilemede kalır, sekme kapanınca silinir.
+
+const SESSION_KEY = 'vk:session';
+
+interface SavedSession { roomCode: string; name: string }
+
+export function saveSession(roomCode: string, name: string): void {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode, name })); } catch { /* gizli sekme vb. */ }
+}
+
+export function clearSession(): void {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* yok say */ }
+}
+
+function loadSession(): SavedSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    return s?.roomCode && s?.name ? s : null;
+  } catch {
+    return null;
+  }
+}
+
+const savedSession = typeof window !== 'undefined' ? loadSession() : null;
+
 interface GameStore {
   myId: string | null;
   myName: string | null;
@@ -35,6 +62,8 @@ interface GameStore {
   myDeathNote: string;
   error: string | null;
   isConnected: boolean;
+  /** Sayfa yenilendikten sonra odaya otomatik geri bağlanılıyor */
+  restoring: boolean;
   /** Oynatılmayı bekleyen sinematik ölüm açıklamaları */
   revealQueue: DeathReveal[];
   /** Açıklaması henüz oynatılmamış ölülerin rolleri gizli tutulur */
@@ -82,6 +111,7 @@ const defaultState = {
   myDeathNote: '',
   error: null,
   isConnected: false,
+  restoring: false,
   revealQueue: [],
   hiddenRoleIds: [],
   showRoleIntro: false,
@@ -105,6 +135,7 @@ function mergePlayers(prev: Record<string, Player>, next: Record<string, Player>
 
 export const useGameStore = create<GameStore>((set) => ({
   ...defaultState,
+  restoring: !!savedSession,
 
   setMyId: (id) => set({ myId: id }),
   setMyName: (name) => set({ myName: name }),
@@ -160,6 +191,30 @@ export const useGameStore = create<GameStore>((set) => ({
 
 let hadSession = false;
 
+// Sayfa yenilendiyse kayıtlı odaya aynı isimle geri katıl
+if (savedSession) {
+  useGameStore.setState({ myName: savedSession.name });
+  socket.once('connect', () => {
+    socket.emit('room:join', savedSession.roomCode, savedSession.name, (ok, _err, playerId) => {
+      if (ok && playerId) {
+        useGameStore.setState({ myId: playerId });
+        // restoring, room:joined gelince kapanır (roomCode o zaman dolar)
+      } else {
+        clearSession();
+        useGameStore.setState({ restoring: false, myName: null });
+      }
+    });
+  });
+  socket.connect();
+}
+
+/** Yeniden bağlanma ekranındaki "Vazgeç" */
+export function abandonRestore(): void {
+  clearSession();
+  socket.disconnect();
+  useGameStore.setState({ ...defaultState, restoring: false });
+}
+
 socket.on('connect', () => {
   useGameStore.setState({ isConnected: true });
   const { roomCode, myName } = useGameStore.getState();
@@ -186,6 +241,9 @@ if (typeof document !== 'undefined') {
 
 socket.on('room:joined', (state, settings) => {
   useGameStore.getState().applyState(state, settings);
+  const { myName, restoring } = useGameStore.getState();
+  if (myName) saveSession(state.roomCode, myName);
+  if (restoring) useGameStore.setState({ restoring: false });
 });
 
 socket.on('room:player-list', (players) => {

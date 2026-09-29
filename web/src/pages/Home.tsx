@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, saveSession } from '../store/gameStore';
 import GothicScene from '../components/GothicScene';
 
 let pendingConnectAction: (() => void) | null = null;
@@ -46,6 +46,7 @@ export default function Home() {
         setLoading(false);
         setMyId(playerId);
         setMyName(name.trim());
+        saveSession(roomCode, name.trim());
         navigate('/lobby');
       });
     });
@@ -65,6 +66,7 @@ export default function Home() {
         if (!ok || !playerId) { setErr(error ?? 'Odaya katılamadı.'); return; }
         setMyId(playerId);
         setMyName(name.trim());
+        saveSession(code.toUpperCase(), name.trim());
         navigate('/lobby');
       });
     });

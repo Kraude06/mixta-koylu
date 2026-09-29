@@ -95,18 +95,25 @@ export class Room {
     return this.phase;
   }
 
-  /** Lobide oyuncuyu siler; oyun sırasında sadece "bağlantısı koptu" olarak işaretler. */
-  removePlayer(id: string): void {
-    if (this.phase !== 'lobby') {
-      this.disconnected.add(id);
-      return;
-    }
+  /**
+   * Bağlantısı kopan oyuncuyu hemen silmez, sadece işaretler: sayfa yenilenirse veya
+   * telefon kilitlenip açılırsa aynı isimle numarasını ve oda sahipliğini koruyarak döner.
+   */
+  markDisconnected(id: string): void {
+    if (this.players[id]) this.disconnected.add(id);
+  }
+
+  /** Lobide hâlâ dönmemiş oyuncuyu odadan çıkarır. Oyun sırasında dokunmaz (bitince temizlenir). */
+  purgeIfDisconnected(id: string): boolean {
+    if (this.phase !== 'lobby' || !this.disconnected.has(id)) return false;
+    this.disconnected.delete(id);
     delete this.players[id];
     this.renumber();
     const remaining = Object.values(this.players);
     if (remaining.length > 0 && !remaining.some(p => p.isHost)) {
       remaining[0].isHost = true;
     }
+    return true;
   }
 
   markConnected(id: string): void {

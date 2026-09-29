@@ -17,6 +17,11 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
+/** Lobide kopan oyuncu bu süre içinde dönmezse odadan çıkarılır */
+const LOBBY_GRACE_MS = 30_000;
+/** Herkesin bağlantısı koparsa oda bu süre sonunda silinir */
+const EMPTY_ROOM_GRACE_MS = 120_000;
+
 const rooms = new Map<string, Room>();
 const socketToRoom = new Map<string, string>();
 const socketToPlayer = new Map<string, string>();
@@ -306,16 +311,24 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       if (playerId && room) io.to(room.code).emit('voice:peer-left', playerId);
     }
     if (room && playerId) {
-      // Lobide oyuncu silinir; oyun sırasında sadece "bağlantı koptu" işaretlenir
-      // ve aynı isimle geri dönebilir.
-      room.removePlayer(playerId);
-      if (room.getPhase() === 'lobby') {
-        io.to(room.code).emit('room:player-list', room.getPublicState().players);
-      }
+      // Oyuncu hemen silinmez: sayfa yenileme / telefon kilidi sonrası aynı isimle döner.
+      room.markDisconnected(playerId);
+      const code = room.code;
+      setTimeout(() => {
+        if (rooms.get(code) !== room) return;
+        if (room.purgeIfDisconnected(playerId)) {
+          io.to(code).emit('room:player-list', room.getPublicState().players);
+          console.log(`[-] Lobiden çıkarıldı (dönmedi): ${code}`);
+        }
+      }, LOBBY_GRACE_MS);
       if (room.getConnectedCount() === 0) {
-        room.dispose();
-        rooms.delete(room.code);
-        console.log(`[-] Oda silindi: ${room.code}`);
+        setTimeout(() => {
+          if (rooms.get(code) === room && room.getConnectedCount() === 0) {
+            room.dispose();
+            rooms.delete(code);
+            console.log(`[-] Oda silindi (boş kaldı): ${code}`);
+          }
+        }, EMPTY_ROOM_GRACE_MS);
       }
     }
     socketToRoom.delete(socket.id);

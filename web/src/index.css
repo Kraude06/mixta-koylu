@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Mobilde aşağı çekip yenilemeyi (pull-to-refresh) kapat — oyun ortasında yanlışlıkla tetikleniyordu */
+  html, body {
+    overscroll-behavior-y: none;
+  }
+
   body {
     background-color: #07070f;
     color: #e2d9f3;
