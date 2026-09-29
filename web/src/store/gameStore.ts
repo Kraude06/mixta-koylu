@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import {
   PersonalGameState, Player, Message, RoleType, TeamType,
-  PhaseType, GameSettings, ChatChannel,
+  PhaseType, GameSettings, GraveEntry, DeathReveal, VerdictChoice,
 } from '@vampir-koylu/shared';
 import { socket } from '../socket';
 
@@ -17,23 +17,39 @@ interface GameStore {
   myTeam: TeamType | null;
   seerResults: Record<string, TeamType>;
   winner: TeamType | null;
+  winReason: string | null;
   phaseEndTime: number | null;
-  eliminatedPlayerId: string | null;
   hunterPlayerId: string | null;
   votes: Record<string, string | undefined>;
-  verdictVotes: Record<string, 'guilty' | 'innocent' | undefined>;
+  /** Karar oylamasında oy verenlerin listesi (oylar gizli) */
+  verdictVoted: string[];
+  myVerdict: VerdictChoice;
   accusedPlayerId: string | null;
+  roleList: RoleType[];
+  graveyard: GraveEntry[];
+  trialsLeft: number;
+  votesNeeded: number;
   settings: GameSettings | null;
+  /** Vasiyet */
   myNotes: string;
+  myDeathNote: string;
   error: string | null;
   isConnected: boolean;
-  deathEvent: { playerId: string; playerName: string; role: RoleType; reason: 'voted' | 'killed' | 'hunter'; notes: string; isMe: boolean } | null;
+  /** Oynatılmayı bekleyen sinematik ölüm açıklamaları */
+  revealQueue: DeathReveal[];
+  /** Açıklaması henüz oynatılmamış ölülerin rolleri gizli tutulur */
+  hiddenRoleIds: string[];
+  /** Oyun başında rol tanıtım kartı */
+  showRoleIntro: boolean;
 
   setMyId: (id: string) => void;
   setMyName: (name: string) => void;
   setMyNotes: (notes: string) => void;
+  setMyDeathNote: (note: string) => void;
+  setMyVerdict: (v: VerdictChoice) => void;
   clearError: () => void;
-  clearDeathEvent: () => void;
+  finishReveal: () => void;
+  dismissRoleIntro: () => void;
   reset: () => void;
   applyState: (state: PersonalGameState, settings?: GameSettings) => void;
 }
@@ -50,20 +66,44 @@ const defaultState = {
   myTeam: null,
   seerResults: {},
   winner: null,
+  winReason: null,
   phaseEndTime: null,
-  eliminatedPlayerId: null,
   hunterPlayerId: null,
   votes: {},
-  verdictVotes: {},
+  verdictVoted: [],
+  myVerdict: 'abstain' as VerdictChoice,
   accusedPlayerId: null,
+  roleList: [],
+  graveyard: [],
+  trialsLeft: 0,
+  votesNeeded: 0,
   settings: null,
   myNotes: '',
+  myDeathNote: '',
   error: null,
   isConnected: false,
-  deathEvent: null,
+  revealQueue: [],
+  hiddenRoleIds: [],
+  showRoleIntro: false,
 };
 
-export const useGameStore = create<GameStore>((set, get) => ({
+/**
+ * Sunucunun genel state'i rolleri gizler; vampir takım arkadaşları ve kendi rolümüz
+ * sadece kişisel state'te gelir. Rol oyun boyunca değişmediği için önceki bilgiyi koru.
+ */
+function mergePlayers(prev: Record<string, Player>, next: Record<string, Player>): Record<string, Player> {
+  const out: Record<string, Player> = {};
+  for (const [id, p] of Object.entries(next)) {
+    out[id] = {
+      ...p,
+      role: p.role ?? prev[id]?.role,
+      team: p.team ?? prev[id]?.team,
+    };
+  }
+  return out;
+}
+
+export const useGameStore = create<GameStore>((set) => ({
   ...defaultState,
 
   setMyId: (id) => set({ myId: id }),
@@ -72,8 +112,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ myNotes: notes });
     socket.emit('notes:update', notes);
   },
+  setMyDeathNote: (note) => {
+    set({ myDeathNote: note });
+    socket.emit('deathnote:update', note);
+  },
+  setMyVerdict: (v) => {
+    set({ myVerdict: v });
+    socket.emit('game:verdict-vote', v);
+  },
   clearError: () => set({ error: null }),
-  clearDeathEvent: () => set({ deathEvent: null }),
+  finishReveal: () => set((prev) => {
+    const [done, ...rest] = prev.revealQueue;
+    return {
+      revealQueue: rest,
+      hiddenRoleIds: done ? prev.hiddenRoleIds.filter(id => id !== done.playerId) : prev.hiddenRoleIds,
+    };
+  }),
+  dismissRoleIntro: () => set({ showRoleIntro: false }),
   reset: () => set(defaultState),
 
   applyState: (state, settings) => set((prev) => ({
@@ -83,83 +138,122 @@ export const useGameStore = create<GameStore>((set, get) => ({
     dayNumber: state.dayNumber,
     players: state.players,
     messages: state.messages,
-    myRole: state.myRole ?? prev.myRole,
-    myTeam: state.myTeam ?? prev.myTeam,
-    seerResults: state.seerResults ?? prev.seerResults,
+    myRole: state.phase === 'lobby' ? null : state.myRole,
+    myTeam: state.phase === 'lobby' ? null : state.myTeam,
+    seerResults: state.seerResults ?? {},
     winner: state.winner ?? null,
     phaseEndTime: state.phaseEndTime ?? null,
-    eliminatedPlayerId: state.eliminatedPlayerId ?? null,
     hunterPlayerId: state.hunterPlayerId ?? null,
     accusedPlayerId: state.accusedPlayerId ?? null,
+    roleList: state.roleList ?? [],
+    graveyard: state.graveyard ?? [],
+    trialsLeft: state.trialsLeft ?? 0,
+    votesNeeded: state.votesNeeded ?? 0,
+    ...(state.phase === 'lobby' ? { revealQueue: [], hiddenRoleIds: [], winReason: null } : {}),
     ...(settings ? { settings } : {}),
   })),
 }));
 
-// Wire socket events to store
-socket.on('connect', () => useGameStore.setState({ isConnected: true }));
-socket.on('disconnect', () => useGameStore.setState({ isConnected: false }));
+// ── Yeniden bağlanma ──────────────────────────────────────────────────────────
+// Telefon kilitlenince/sekme arka plana alınınca soket düşer. Geri gelince
+// aynı isimle odaya tekrar katılıp kaldığımız yerden devam ederiz.
+
+let hadSession = false;
+
+socket.on('connect', () => {
+  useGameStore.setState({ isConnected: true });
+  const { roomCode, myName } = useGameStore.getState();
+  if (hadSession && roomCode && myName) {
+    socket.emit('room:join', roomCode, myName, (ok) => {
+      if (!ok) useGameStore.setState({ error: 'Odaya yeniden bağlanılamadı.' });
+    });
+  }
+});
+socket.on('disconnect', () => {
+  hadSession = !!useGameStore.getState().roomCode;
+  useGameStore.setState({ isConnected: false });
+});
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !socket.connected && useGameStore.getState().roomCode) {
+      socket.connect();
+    }
+  });
+}
+
+// ── Sunucu olayları ───────────────────────────────────────────────────────────
 
 socket.on('room:joined', (state, settings) => {
   useGameStore.getState().applyState(state, settings);
 });
 
 socket.on('room:player-list', (players) => {
-  useGameStore.setState({ players });
+  useGameStore.setState((prev) => ({ players: mergePlayers(prev.players, players) }));
 });
 
 socket.on('game:started', (state) => {
   useGameStore.getState().applyState(state);
+  useGameStore.setState({
+    myNotes: '',
+    myDeathNote: '',
+    showRoleIntro: true,
+    votes: {},
+    verdictVoted: [],
+    myVerdict: 'abstain',
+    winner: null,
+    winReason: null,
+  });
 });
 
 socket.on('game:state', (state) => {
-  useGameStore.setState({
+  useGameStore.setState((prev) => ({
     phase: state.phase,
-    players: state.players,
+    players: mergePlayers(prev.players, state.players),
     phaseEndTime: state.phaseEndTime ?? null,
-    eliminatedPlayerId: state.eliminatedPlayerId ?? null,
     hunterPlayerId: state.hunterPlayerId ?? null,
     accusedPlayerId: state.accusedPlayerId ?? null,
     winner: state.winner ?? null,
-  });
+    roleList: state.roleList,
+    graveyard: state.graveyard,
+    trialsLeft: state.trialsLeft,
+    votesNeeded: state.votesNeeded,
+  }));
 });
 
 socket.on('game:phase', (phase, dayNumber, endTime, accusedPlayerId) => {
-  useGameStore.setState({
+  useGameStore.setState((prev) => ({
     phase,
     dayNumber,
     phaseEndTime: endTime,
-    votes: {},
-    verdictVotes: {},
-    eliminatedPlayerId: null,
     accusedPlayerId: accusedPlayerId ?? null,
-  });
-});
-
-socket.on('verdict:update', (votes) => {
-  useGameStore.setState({ verdictVotes: votes });
-});
-
-socket.on('game:eliminated', (playerId, role, reason, notes) => {
-  const { myId, players } = useGameStore.getState();
-  const playerName = players[playerId]?.name ?? '?';
-  useGameStore.setState((prev) => ({
-    players: {
-      ...prev.players,
-      [playerId]: prev.players[playerId]
-        ? { ...prev.players[playerId], isAlive: false, role }
-        : prev.players[playerId],
-    },
-    eliminatedPlayerId: playerId,
-    deathEvent: { playerId, playerName, role, reason, notes: notes ?? '', isMe: playerId === myId },
+    ...(phase === 'voting' || phase === 'night' ? { votes: {} } : {}),
+    ...(phase === 'verdict' ? { verdictVoted: [], myVerdict: 'abstain' as VerdictChoice } : {}),
+    ...(phase !== prev.phase && phase === 'night' ? { verdictVoted: [] } : {}),
   }));
+});
+
+socket.on('game:reveal', (reveals) => {
+  useGameStore.setState((prev) => ({
+    revealQueue: [...prev.revealQueue, ...reveals],
+    hiddenRoleIds: [...prev.hiddenRoleIds, ...reveals.map(r => r.playerId)],
+    players: reveals.reduce((acc, r) => ({
+      ...acc,
+      [r.playerId]: acc[r.playerId] ? { ...acc[r.playerId], isAlive: false, role: r.role } : acc[r.playerId],
+    }), prev.players),
+  }));
+});
+
+socket.on('verdict:update', (voted) => {
+  useGameStore.setState({ verdictVoted: voted });
 });
 
 socket.on('game:hunter-triggered', (hunterId) => {
   useGameStore.setState({ hunterPlayerId: hunterId });
 });
 
-socket.on('game:over', (winner) => {
-  useGameStore.setState({ winner, phase: 'game-over' });
+socket.on('game:over', (winner, reason) => {
+  useGameStore.setState({ winner, winReason: reason, phase: 'game-over', revealQueue: [], hiddenRoleIds: [] });
 });
 
 socket.on('chat:message', (msg) => {

@@ -98,29 +98,36 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
 
     const trimmedName = playerName.trim().substring(0, 20);
 
-    // 2. Lobi aşamasında aynı isimde oyuncu varsa → eski bağlantıyı temizle (yeniden bağlanma)
-    if (room.getPhase() === 'lobby') {
-      const existing = room.findPlayerByName(trimmedName);
-      if (existing) {
-        for (const [sid, pid] of socketToPlayer.entries()) {
-          if (pid === existing.id && socketToRoom.get(sid) === normalCode) {
-            socketToRoom.delete(sid);
-            socketToPlayer.delete(sid);
-            break;
-          }
+    // 2. Aynı isimde oyuncu varsa → yeniden bağlanma (lobide ve oyun sırasında).
+    //    Telefon kilitlenince soket düşer; oyuncu aynı isimle kaldığı yerden devam eder.
+    //    Sunucu kopmayı henüz fark etmemiş olabilir, bu yüzden eski soket eşlemesi burada temizlenir.
+    const existing = room.findPlayerByName(trimmedName);
+    if (existing) {
+      for (const [sid, pid] of socketToPlayer.entries()) {
+        if (pid === existing.id && socketToRoom.get(sid) === normalCode) {
+          socketToRoom.delete(sid);
+          socketToPlayer.delete(sid);
+          voiceSockets.delete(sid);
+          break;
         }
-        socketToRoom.set(socket.id, normalCode);
-        socketToPlayer.set(socket.id, existing.id);
-        socket.join(normalCode);
-        cb(true, undefined, existing.id);
-        socket.emit('room:joined', room.getPersonalState(existing.id), room.getSettings());
-        io.to(normalCode).emit('room:player-list', room.getPublicState().players);
-        console.log(`[↺] Yeniden bağlandı: ${normalCode} — ${trimmedName}`);
-        return;
       }
+      socketToRoom.set(socket.id, normalCode);
+      socketToPlayer.set(socket.id, existing.id);
+      socket.join(normalCode);
+      room.markConnected(existing.id);
+      cb(true, undefined, existing.id);
+      socket.emit('room:joined', room.getPersonalState(existing.id), room.getSettings());
+      if (room.getPhase() === 'lobby') {
+        io.to(normalCode).emit('room:player-list', room.getPublicState().players);
+      }
+      console.log(`[↺] Yeniden bağlandı: ${normalCode} — ${trimmedName}`);
+      return;
     }
 
     // 3. Yeni oyuncu
+    if (room.getPhase() !== 'lobby') {
+      return cb(false, 'Oyun devam ediyor — bitince katılabilirsin.');
+    }
     if (room.getPlayerCount() >= 16) return cb(false, 'Oda dolu (max 16 oyuncu).');
 
     const playerId = uuidv4();
@@ -208,6 +215,23 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     cb(room.getNotes(targetPlayerId));
   });
 
+  socket.on('deathnote:update', (note) => {
+    const room = getRoom(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    if (!room || !playerId) return;
+    room.updateDeathNote(playerId, note.substring(0, 500));
+  });
+
+  socket.on('chat:whisper', (targetId, content) => {
+    const room = getRoom(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    if (!room || !playerId) return;
+    const trimmed = content.trim().substring(0, 300);
+    if (!trimmed) return;
+    const err = room.whisper(playerId, targetId, trimmed);
+    if (err) socket.emit('error', err);
+  });
+
   // ── Voice signaling ──────────────────────────────────────────────────────────
 
   socket.on('voice:ready', (cb) => {
@@ -280,12 +304,14 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
       if (playerId && room) io.to(room.code).emit('voice:peer-left', playerId);
     }
     if (room && playerId) {
+      // Lobide oyuncu silinir; oyun sırasında sadece "bağlantı koptu" işaretlenir
+      // ve aynı isimle geri dönebilir.
       room.removePlayer(playerId);
-      io.to(room.code).emit('room:player-list', room.getPublicState().players);
-      // Odayı yalnızca lobi fazında ve tamamen boşsa sil.
-      // Oyun sırasında biri disconnect olsa da oda korunur,
-      // böylece resetToLobby timer'ı iptal olmaz.
-      if (room.getPhase() === 'lobby' && room.getPlayerCount() === 0) {
+      if (room.getPhase() === 'lobby') {
+        io.to(room.code).emit('room:player-list', room.getPublicState().players);
+      }
+      if (room.getConnectedCount() === 0) {
+        room.dispose();
         rooms.delete(room.code);
         console.log(`[-] Oda silindi: ${room.code}`);
       }

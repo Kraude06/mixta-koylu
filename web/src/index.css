@@ -54,4 +54,109 @@
     line-height: 1.5;
     letter-spacing: 0.01em;
   }
+
+  /* ── ToS tarzı oyun arayüzü ─────────────────────────────────────────── */
+
+  /* Koyu ahşap panel, pirinç çerçeve */
+  .panel {
+    @apply relative flex flex-col min-h-0 rounded-lg overflow-hidden;
+    background:
+      linear-gradient(180deg, rgba(255, 220, 160, 0.035), transparent 40%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 9px),
+      linear-gradient(180deg, #22150d 0%, #170e09 100%);
+    border: 2px solid #4d321b;
+    box-shadow:
+      inset 0 0 0 1px rgba(220, 180, 92, 0.22),
+      inset 0 2px 12px rgba(0, 0, 0, 0.6),
+      0 6px 18px rgba(0, 0, 0, 0.55);
+  }
+
+  .panel-title {
+    @apply shrink-0 flex items-center justify-center gap-2 px-3 py-1.5 font-display text-brass-300 tracking-wide;
+    font-size: 1.15rem;
+    line-height: 1;
+    background: linear-gradient(180deg, #3a2414 0%, #26170d 100%);
+    border-bottom: 1px solid rgba(220, 180, 92, 0.3);
+    text-shadow: 0 1px 0 #000, 0 0 10px rgba(240, 208, 128, 0.25);
+  }
+
+  /* Parşömen (vasiyet, not, rol kartı) */
+  .parchment {
+    color: #3a2a15;
+    background:
+      radial-gradient(ellipse at 20% 15%, rgba(255, 255, 255, 0.35), transparent 55%),
+      radial-gradient(ellipse at 80% 90%, rgba(120, 80, 30, 0.25), transparent 60%),
+      radial-gradient(circle at 50% 50%, #f2e2b8 0%, #e6cf98 70%, #d4b777 100%);
+    box-shadow: inset 0 0 40px rgba(90, 60, 20, 0.45), 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Pirinç çerçeveli buton */
+  .btn-brass {
+    @apply font-display tracking-wide rounded-md px-4 py-2 transition-all duration-150 active:scale-95
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+    color: #f7e3a8;
+    background: linear-gradient(180deg, #4d321b 0%, #2a1a0e 100%);
+    border: 1.5px solid #b88d3e;
+    box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.25), 0 2px 6px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 1px 0 #000;
+  }
+  .btn-brass:hover:not(:disabled) {
+    border-color: #f0d080;
+    box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.35), 0 0 12px rgba(240, 208, 128, 0.25);
+  }
+
+  /* Anlatıcı: ekranın ortasında beliren büyük yazı */
+  .narrator-text {
+    @apply font-display text-center;
+    color: #f7e3a8;
+    text-shadow:
+      0 0 2px #000, 0 2px 0 #000, 2px 0 0 #000, -2px 0 0 #000, 0 -2px 0 #000,
+      0 0 24px rgba(0, 0, 0, 0.9);
+    letter-spacing: 0.02em;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #6b4726; }
+}
+
+@layer utilities {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@keyframes narratorIn {
+  0%   { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scrollOpen {
+  0%   { opacity: 0; transform: scaleY(0.05); }
+  60%  { opacity: 1; transform: scaleY(1.03); }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+@keyframes medallionIn {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-25deg); }
+  70%  { opacity: 1; transform: scale(1.08) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes bloodDrip {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+@keyframes youDiedIn {
+  0%   { opacity: 0; transform: scale(1.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes tokenBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@keyframes pulseRing {
+  0%   { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.55); }
+}
+@keyframes swing {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(4deg); }
 }

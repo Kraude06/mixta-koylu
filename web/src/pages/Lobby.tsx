@@ -13,10 +13,11 @@ export default function Lobby() {
     includeDoctor: true,
     includeSeer: true,
     includeHunter: false,
-    dayDuration: 120,
-    nightDuration: 60,
-    trialDuration: 45,
-    verdictDuration: 30,
+    discussionDuration: 45,
+    votingDuration: 60,
+    trialDuration: 25,
+    verdictDuration: 20,
+    nightDuration: 40,
   });
 
   useEffect(() => {
@@ -26,17 +27,17 @@ export default function Lobby() {
         includeDoctor: settings.includeDoctor,
         includeSeer: settings.includeSeer,
         includeHunter: settings.includeHunter,
-        dayDuration: settings.dayDuration,
-        nightDuration: settings.nightDuration,
+        discussionDuration: settings.discussionDuration,
+        votingDuration: settings.votingDuration,
         trialDuration: settings.trialDuration,
         verdictDuration: settings.verdictDuration,
+        nightDuration: settings.nightDuration,
       });
     }
   }, [settings]);
 
   useEffect(() => {
-    const activePhases = ['day', 'trial', 'verdict', 'night', 'hunter-revenge'];
-    if (activePhases.includes(phase)) navigate('/game');
+    if (phase !== 'lobby') navigate('/game');
   }, [phase, navigate]);
 
   const playerList = Object.values(players);
@@ -206,10 +207,11 @@ export default function Lobby() {
               <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Süreler</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                 {([
-                  { key: 'dayDuration',     icon: '☀️', label: 'Gündüz',  color: '#facc15', accent: 'accent-yellow-400',  min: 30,  max: 300, step: 15 },
-                  { key: 'nightDuration',   icon: '🌙', label: 'Gece',    color: '#818cf8', accent: 'accent-indigo-400',  min: 20,  max: 120, step: 10 },
-                  { key: 'trialDuration',   icon: '⚖️', label: 'Savunma', color: '#fbbf24', accent: 'accent-amber-400',   min: 15,  max: 90,  step: 15 },
-                  { key: 'verdictDuration', icon: '🗳️', label: 'Karar',   color: '#fb923c', accent: 'accent-orange-400',  min: 15,  max: 60,  step: 15 },
+                  { key: 'discussionDuration', icon: '💬', label: 'Tartışma', color: '#facc15', accent: 'accent-yellow-400',  min: 15,  max: 180, step: 15 },
+                  { key: 'votingDuration',     icon: '🗳️', label: 'Oylama',   color: '#fb923c', accent: 'accent-orange-400',  min: 30,  max: 180, step: 15 },
+                  { key: 'trialDuration',      icon: '⚖️', label: 'Savunma',  color: '#fbbf24', accent: 'accent-amber-400',   min: 10,  max: 60,  step: 5 },
+                  { key: 'verdictDuration',    icon: '🔨', label: 'Karar',    color: '#f87171', accent: 'accent-red-400',     min: 10,  max: 45,  step: 5 },
+                  { key: 'nightDuration',      icon: '🌙', label: 'Gece',     color: '#818cf8', accent: 'accent-indigo-400',  min: 20,  max: 120, step: 10 },
                 ] as const).map(({ key, icon, label, color, accent, min, max, step }) => (
                   <div key={key}>
                     <div className="flex items-center justify-between mb-1">
@@ -253,14 +255,16 @@ export default function Lobby() {
               <span className={settings.includeSeer ? 'text-green-400' : 'text-gray-600'}>{settings.includeSeer ? '✓ Var' : '— Yok'}</span>
               <span className="text-gray-600">🏹 Avcı</span>
               <span className={settings.includeHunter ? 'text-green-400' : 'text-gray-600'}>{settings.includeHunter ? '✓ Var' : '— Yok'}</span>
-              <span className="text-gray-600">☀️ Gündüz</span>
-              <span className="text-yellow-500">{settings.dayDuration}s</span>
-              <span className="text-gray-600">🌙 Gece</span>
-              <span className="text-indigo-400">{settings.nightDuration}s</span>
+              <span className="text-gray-600">💬 Tartışma</span>
+              <span className="text-yellow-500">{settings.discussionDuration}s</span>
+              <span className="text-gray-600">🗳️ Oylama</span>
+              <span className="text-orange-400">{settings.votingDuration}s</span>
               <span className="text-gray-600">⚖️ Savunma</span>
               <span className="text-amber-400">{settings.trialDuration}s</span>
-              <span className="text-gray-600">🗳️ Karar</span>
-              <span className="text-orange-400">{settings.verdictDuration}s</span>
+              <span className="text-gray-600">🔨 Karar</span>
+              <span className="text-red-400">{settings.verdictDuration}s</span>
+              <span className="text-gray-600">🌙 Gece</span>
+              <span className="text-indigo-400">{settings.nightDuration}s</span>
             </div>
           </div>
         )}

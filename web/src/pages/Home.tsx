@@ -4,6 +4,8 @@ import { socket } from '../socket';
 import { useGameStore } from '../store/gameStore';
 import GothicScene from '../components/GothicScene';
 
+let pendingConnectAction: (() => void) | null = null;
+
 export default function Home() {
   const navigate = useNavigate();
   const { setMyId, setMyName } = useGameStore();
@@ -24,9 +26,11 @@ export default function Home() {
 
   function connect(action: () => void) {
     if (socket.connected) { action(); return; }
-    socket.off('connect');
+    // Sadece önceki bekleyen aksiyonu kaldır — store'un yeniden bağlanma dinleyicisine dokunma
+    if (pendingConnectAction) socket.off('connect', pendingConnectAction);
+    pendingConnectAction = () => { pendingConnectAction = null; action(); };
     socket.disconnect();
-    socket.once('connect', action);
+    socket.once('connect', pendingConnectAction);
     socket.connect();
   }
 
